@@ -3,6 +3,24 @@ import { env } from "cloudflare:workers";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import LedReference from "../../components/LedReference.astro";
 import { isAuthenticated } from "../../lib/auth";
+
+function relativeTime(value: string) {
+	const timestamp = Date.parse(value);
+	if (Number.isNaN(timestamp)) return value;
+
+	const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+	if (seconds < 60) return `${seconds} second${seconds === 1 ? "" : "s"} ago`;
+
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+	const days = Math.floor(hours / 24);
+	return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 const authenticated = await isAuthenticated(Astro);
 const devices = await env.DB.prepare(
 	"SELECT * FROM devices ORDER BY last_seen DESC",
@@ -35,7 +53,7 @@ const devices = await env.DB.prepare(
 									</td>
 									<td data-label="Gateway">{d.gateway_id ?? "—"}</td>
 									<td data-label="Last seen" class="mono">
-										{d.last_seen}
+										{relativeTime(d.last_seen)}
 									</td>
 									<td data-label="ESP-NOW RSSI" class="mono">
 										{d.last_espnow_rssi ?? "—"}
