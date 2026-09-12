@@ -197,4 +197,4 @@ See [AGENTS.md](./AGENTS.md) for development rules.
 
 ## License
 
-MIT. The license file is intentionally not included in this initial bundle and can be added by the repository owner.
+This project is licensed under the [MIT License](./LICENSE).
