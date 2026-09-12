@@ -2,8 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "rtk-gnss",
   "main": "dist/_worker.js/index.js",
-  "compatibility_date": "2026-09-01",
+  "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": false,
   "assets": {
     "directory": "dist",
     "binding": "ASSETS"
@@ -12,7 +13,7 @@
     {
       "binding": "DB",
       "database_name": "rtk-gnss",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "ad91c8cd-52b1-4ffa-80e0-65c6c9e90960",
       "migrations_dir": "migrations"
     }
   ],
