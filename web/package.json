@@ -32,6 +32,6 @@
     "tailwind-lint": "^0.12.1",
     "typescript": "^6.0.3",
     "wrangler": "^4.129.1",
-    "@cloudflare/workers-types": "^4.20260910.0"
+    "@cloudflare/workers-types": "^5.20260911.1"
   }
 }
