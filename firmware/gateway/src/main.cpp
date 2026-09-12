@@ -28,6 +28,7 @@ using namespace rtk;
 
 static uint8_t deviceMac[] = DEVICE_MAC;
 static uint8_t roverMac[] = ROVER_MAC;
+static uint8_t broadcastMac[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 static Adafruit_NeoPixel led(1, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
 static portMUX_TYPE stateMux = portMUX_INITIALIZER_UNLOCKED;
 static TelemetryPayload latestRover{};
@@ -40,6 +41,7 @@ static uint32_t lastRoverMs = 0;
 static uint32_t lastServerOkMs = 0;
 static uint32_t lastWifiAttemptMs = 0;
 static uint32_t lastBoundaryEpoch = 0;
+static uint32_t lastChannelBeaconMs = 0;
 static uint32_t lastCommandId = 0;
 static uint32_t rtcmBytes = 0;
 static uint32_t lastRtcmMs = 0;
@@ -55,6 +57,14 @@ static uint32_t overlayUntil = 0;
 static void flashWhite(uint16_t ms = 35) {
   overlayColor = rgb(100, 100, 100);
   overlayUntil = millis() + ms;
+}
+
+static void sendChannelBeacon() {
+  if (WiFi.status() != WL_CONNECTED || millis() - lastChannelBeaconMs < 250) return;
+  lastChannelBeaconMs = millis();
+  ChannelBeaconPayload beacon{};
+  initHeader(beacon.header, MsgType::CHANNEL_BEACON, sizeof(beacon), 0, GATEWAY_DEVICE_ID);
+  esp_now_send(broadcastMac, reinterpret_cast<uint8_t *>(&beacon), sizeof(beacon));
 }
 
 static void updateLed() {
@@ -190,9 +200,14 @@ static void setupEspNow() {
   esp_now_register_recv_cb(onReceive);
   esp_now_peer_info_t peer{};
   memcpy(peer.peer_addr, roverMac, 6);
-  peer.channel = 0;  // Follow current STA channel.
+  peer.channel = 0;  // Follow the Wi-Fi channel.
   peer.encrypt = false;
   esp_now_add_peer(&peer);
+  esp_now_peer_info_t broadcastPeer{};
+  memcpy(broadcastPeer.peer_addr, broadcastMac, 6);
+  broadcastPeer.channel = 0;
+  broadcastPeer.encrypt = false;
+  esp_now_add_peer(&broadcastPeer);
 }
 
 static bool connectBestWifi() {
@@ -417,6 +432,7 @@ static void networkTask(void *) {
       lastWifiAttemptMs = millis();
       connectBestWifi();
     }
+    sendChannelBeacon();
     queueLiveStatus();
     if (millis() - lastSync > UPLOAD_RETRY_INTERVAL_MS) { lastSync = millis(); syncQueue(); }
     if (millis() - lastPoll > COMMAND_POLL_INTERVAL_MS) { lastPoll = millis(); pollCommands(); }

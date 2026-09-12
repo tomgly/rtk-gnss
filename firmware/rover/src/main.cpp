@@ -23,6 +23,7 @@ static uint32_t seqNo = 0;
 static uint32_t lastTelemetryMs = 0;
 static uint32_t lastHeartbeatMs = 0;
 static uint32_t lastGatewayRxMs = 0;
+static bool gatewayChannelLocked = false;
 static uint32_t lastNmeaMs = 0;
 static char sessionId[ID_LEN] = "";
 static bool sessionActive = false;
@@ -274,10 +275,14 @@ static void cancelLastMeasurement() {
 }
 
 static void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
+  if (memcmp(mac, gatewayMac, 6) != 0) return;
   if (len < (int)sizeof(Header)) return;
   auto *h = reinterpret_cast<const Header *>(data);
   if (h->version != PROTOCOL_VERSION) return;
   lastGatewayRxMs = millis();
+  gatewayChannelLocked = true;
+
+  if (h->type == MsgType::CHANNEL_BEACON && len >= (int)sizeof(ChannelBeaconPayload)) return;
 
   if (h->type == MsgType::ACK && len >= (int)sizeof(AckPayload)) {
     auto *p = reinterpret_cast<const AckPayload *>(data);
@@ -321,12 +326,12 @@ static void setupEspNow() {
   esp_now_add_peer(&peer);
 }
 
-
 static void recoverEspNowChannel() {
   static uint32_t lastHop = 0;
   static uint8_t channel = 1;
-  if (millis() - lastGatewayRxMs <= GATEWAY_TIMEOUT_MS) return;
-  if (millis() - lastHop < 250) return;
+  if (gatewayChannelLocked && millis() - lastGatewayRxMs <= GATEWAY_TIMEOUT_MS) return;
+  gatewayChannelLocked = false;
+  if (millis() - lastHop < 350) return;
   lastHop = millis();
   esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
   channel = channel >= 11 ? 1 : channel + 1;
@@ -338,6 +343,7 @@ static void handleButton() {
   static uint32_t releasedAt = 0;
   static uint8_t clickCount = 0;
   bool current = digitalRead(BUTTON_PIN);
+  recoverEspNowChannel();
   uint32_t now = millis();
 
   if (prev == HIGH && current == LOW) pressStart = now;
@@ -399,7 +405,6 @@ void loop() {
     sendHeartbeat();
   }
   handleButton();
-  recoverEspNowChannel();
   updateLed();
   delay(2);
 }

@@ -4,7 +4,7 @@
 
 namespace rtk {
 
-constexpr uint8_t PROTOCOL_VERSION = 2;
+constexpr uint8_t PROTOCOL_VERSION = 1;
 constexpr size_t DEVICE_ID_LEN = 17;
 constexpr size_t ID_LEN = 33;
 constexpr size_t NAME_LEN = 48;
@@ -25,6 +25,7 @@ enum class MsgType : uint8_t {
   SESSION_CONTROL = 0x83,
   CONFIG = 0x84,
   TIME_SYNC = 0x85,
+  CHANNEL_BEACON = 0x86,
 };
 
 struct __attribute__((packed)) Header {
@@ -121,6 +122,10 @@ struct __attribute__((packed)) RtcmFragmentPayload {
   uint16_t fragment_count;
   uint16_t data_len;
   uint8_t data[RTCM_FRAGMENT_BYTES];
+};
+
+struct __attribute__((packed)) ChannelBeaconPayload {
+  Header header;
 };
 
 static_assert(sizeof(TelemetryPayload) <= ESPNOW_MAX_PAYLOAD_BYTES);

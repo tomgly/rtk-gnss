@@ -2,7 +2,7 @@
 
 ## Protocol Version
 
-Current ESP-NOW protocol version: `2`.
+Current ESP-NOW protocol version: `1`.
 
 Every binary message starts with a common header:
 
@@ -53,6 +53,8 @@ Recommended logical identifiers:
 The firmware implementation uses compact UUID-like hexadecimal IDs to keep ESP-NOW payload size predictable.
 
 Every ESP-NOW message is limited to 250 bytes. Telemetry includes the latest GGA sentence and fits this limit exactly. Measurement snapshots omit GGA because the Gateway does not need it to store a point.
+
+The Gateway follows the connected 2.4 GHz Wi-Fi channel and broadcasts a `CHANNEL_BEACON` every 250 ms. The Rover scans channels only until it receives a beacon from its configured Gateway MAC, then remains on that channel. It resumes scanning after the Gateway link timeout.
 
 ## Telemetry
 

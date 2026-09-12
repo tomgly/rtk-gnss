@@ -6,7 +6,7 @@ RTK-GNSS Rev.1 is designed as a field-testable Rover/Gateway system with clear r
 
 - Rover remains independent of the Internet.
 - Gateway is the single Internet-facing device.
-- ESP-NOW unicast is the only normal Rover/Gateway transport.
+- ESP-NOW unicast is the normal Rover/Gateway transport; Gateway channel beacons let the Rover discover the current Wi-Fi channel.
 - Cloud synchronization must never be required for measurement collection.
 - NTRIP is optional and failure must degrade RTK only, not logging or standard GNSS operation.
 
