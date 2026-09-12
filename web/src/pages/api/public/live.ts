@@ -42,7 +42,17 @@ export const GET: APIRoute = async () => {
 		)
 		.first();
 	return new Response(
-		JSON.stringify({ gateway, rover, telemetry, measurement, activeSession }),
+		JSON.stringify({
+			gateway,
+			rover,
+			telemetry,
+			measurement,
+			activeSession,
+			connection: {
+				gateway_online: Boolean(liveStatus?.gateway),
+				rover_online: Boolean(liveStatus?.rover),
+			},
+		}),
 		{
 			headers: {
 				"content-type": "application/json",

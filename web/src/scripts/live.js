@@ -57,11 +57,13 @@ const hasCurrentGnssData = (status) =>
 	isCurrentTelemetry(status) &&
 	Number(status?.fix) > 0 &&
 	Number(status?.gnss_age_ms) <= 5000;
-const updateOnlineState = (gateway, rover, status) => {
-	const gatewayOnline = isCurrentDeviceStatus({
-		gateway_time: gateway?.last_seen,
-	});
-	const roverOnline = isCurrentDeviceStatus({ gateway_time: rover?.last_seen });
+const updateOnlineState = (gateway, rover, status, connection) => {
+	const gatewayOnline =
+		connection?.gateway_online ??
+		isCurrentDeviceStatus({ gateway_time: gateway?.last_seen });
+	const roverOnline =
+		connection?.rover_online ??
+		isCurrentDeviceStatus({ gateway_time: rover?.last_seen });
 	const telemetryCurrent = isCurrentTelemetry(status);
 	const roverState = roverOnline
 		? telemetryCurrent
@@ -82,18 +84,26 @@ const updateOnlineState = (gateway, rover, status) => {
 	);
 	setState("gateway-state", gatewayOnline ? "connected" : "offline");
 	setState("rover-state", roverState);
-	return { gatewayOnline, rover, telemetry: telemetryCurrent ? status : {} };
+	return {
+		gatewayOnline,
+		roverOnline,
+		rover,
+		telemetry: telemetryCurrent ? status : {},
+	};
 };
 async function refresh() {
 	try {
 		const response = await fetch("/api/public/live", { cache: "no-store" });
 		if (!response.ok) throw new Error("Live request failed");
 		const data = await response.json();
-		const state = updateOnlineState(data.gateway, data.rover, data.telemetry);
+		const state = updateOnlineState(
+			data.gateway,
+			data.rover,
+			data.telemetry,
+			data.connection,
+		);
 		const t = state.telemetry;
-		const noData =
-			isCurrentDeviceStatus({ gateway_time: data.rover?.last_seen }) &&
-			!isCurrentTelemetry(data.telemetry);
+		const noData = state.roverOnline && !isCurrentTelemetry(data.telemetry);
 		const hasPosition = hasCurrentGnssData(data.telemetry);
 		txt("fix", noData ? "No Data" : fixLabel(t.fix));
 		setState("gnss-status", noData ? "no-data" : fixState(t.fix));
