@@ -20,28 +20,36 @@ const rover = await db
 		"SELECT * FROM devices WHERE device_id != gateway_id ORDER BY last_seen DESC LIMIT 1",
 	)
 	.first<any>();
-const LIVE_STATUS_MAX_AGE_MS = 15_000;
-const isCurrentLiveStatus = (status: any) => {
+const DEVICE_STATUS_MAX_AGE_MS = 15_000;
+const TELEMETRY_MAX_AGE_MS = 120_000;
+const isCurrentStatus = (status: any, maxAgeMs: number) => {
 	const updatedAt = Date.parse(status?.gateway_time ?? "");
 	return (
 		Number.isFinite(updatedAt) &&
 		updatedAt <= Date.now() &&
-		Date.now() - updatedAt <= LIVE_STATUS_MAX_AGE_MS
+		Date.now() - updatedAt <= maxAgeMs
 	);
 };
-const liveStatusCurrent = isCurrentLiveStatus(telemetry);
+const liveStatusCurrent = isCurrentStatus(telemetry, TELEMETRY_MAX_AGE_MS);
 const hasCurrentGnssData = (status: any) =>
-	isCurrentLiveStatus(status) &&
+	isCurrentStatus(status, TELEMETRY_MAX_AGE_MS) &&
 	Number(status?.fix) > 0 &&
 	Number(status?.gnss_age_ms) <= 5_000;
-const gatewayStatusCurrent = isCurrentLiveStatus({
-	gateway_time: gateway?.last_seen,
-});
-const roverStatusCurrent = isCurrentLiveStatus({
-	gateway_time: rover?.last_seen,
-});
-const roverLinkCurrent = roverStatusCurrent || liveStatusCurrent;
-const currentTelemetry = hasCurrentGnssData(telemetry) ? telemetry : null;
+const gatewayStatusCurrent = isCurrentStatus(
+	{
+		gateway_time: gateway?.last_seen,
+	},
+	DEVICE_STATUS_MAX_AGE_MS,
+);
+const roverStatusCurrent = isCurrentStatus(
+	{
+		gateway_time: rover?.last_seen,
+	},
+	DEVICE_STATUS_MAX_AGE_MS,
+);
+const roverLinkCurrent = roverStatusCurrent;
+const currentTelemetry = liveStatusCurrent ? telemetry : null;
+const currentPosition = hasCurrentGnssData(telemetry) ? telemetry : null;
 const activeSession = await db
 	.prepare(
 		"SELECT * FROM sessions WHERE active=1 ORDER BY started_at DESC LIMIT 1",
@@ -152,21 +160,21 @@ const fixState = (fix?: number) =>
 					<span class="metric-label">Latitude</span><strong
 						id="lat"
 						class="mono metric-value"
-						>{currentTelemetry?.lat?.toFixed?.(7) ?? "—"}</strong
+						>{currentPosition?.lat?.toFixed?.(7) ?? "—"}</strong
 					>
 				</div>
 				<div>
 					<span class="metric-label">Longitude</span><strong
 						id="lon"
 						class="mono metric-value"
-						>{currentTelemetry?.lon?.toFixed?.(7) ?? "—"}</strong
+						>{currentPosition?.lon?.toFixed?.(7) ?? "—"}</strong
 					>
 				</div>
 			</div>
 			<div class="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-900">
 				<span class="text-gray-500">Altitude</span>
 				<strong class="mono"
-					><span id="alt">{currentTelemetry?.alt_m?.toFixed?.(2) ?? "—"}</span> m</strong
+					><span id="alt">{currentPosition?.alt_m?.toFixed?.(2) ?? "—"}</span> m</strong
 				>
 			</div>
 		</section>

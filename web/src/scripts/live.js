@@ -43,29 +43,28 @@ const updateSession = (session) => {
 	}
 	txt("stop-session-label", "Stop");
 };
-const isCurrentLiveStatus = (status) => {
+const isCurrentStatus = (status, maxAgeMs) => {
 	const updatedAt = Date.parse(status?.gateway_time || "");
 	return (
 		Number.isFinite(updatedAt) &&
 		updatedAt <= Date.now() &&
-		Date.now() - updatedAt <= 15000
+		Date.now() - updatedAt <= maxAgeMs
 	);
 };
+const isCurrentDeviceStatus = (status) => isCurrentStatus(status, 15000);
+const isCurrentTelemetry = (status) => isCurrentStatus(status, 120000);
 const hasCurrentGnssData = (status) =>
-	isCurrentLiveStatus(status) &&
+	isCurrentTelemetry(status) &&
 	Number(status?.fix) > 0 &&
 	Number(status?.gnss_age_ms) <= 5000;
 const updateOnlineState = (gateway, rover, status) => {
-	const gatewayOnline = isCurrentLiveStatus({
+	const gatewayOnline = isCurrentDeviceStatus({
 		gateway_time: gateway?.last_seen,
 	});
-	const liveStatusCurrent = isCurrentLiveStatus(status);
-	const roverOnline =
-		isCurrentLiveStatus({ gateway_time: rover?.last_seen }) ||
-		liveStatusCurrent;
-	const hasGnssData = hasCurrentGnssData(status);
+	const roverOnline = isCurrentDeviceStatus({ gateway_time: rover?.last_seen });
+	const telemetryCurrent = isCurrentTelemetry(status);
 	const roverState = roverOnline
-		? hasGnssData
+		? telemetryCurrent
 			? "connected"
 			: "no-data"
 		: "offline";
@@ -76,14 +75,14 @@ const updateOnlineState = (gateway, rover, status) => {
 	txt(
 		"rover-state-label",
 		roverOnline
-			? hasGnssData
+			? telemetryCurrent
 				? "Rover Online"
 				: "Rover Online · No Data"
 			: "Rover Offline",
 	);
 	setState("gateway-state", gatewayOnline ? "connected" : "offline");
 	setState("rover-state", roverState);
-	return { gatewayOnline, rover, telemetry: hasGnssData ? status : {} };
+	return { gatewayOnline, rover, telemetry: telemetryCurrent ? status : {} };
 };
 async function refresh() {
 	try {
@@ -93,9 +92,9 @@ async function refresh() {
 		const state = updateOnlineState(data.gateway, data.rover, data.telemetry);
 		const t = state.telemetry;
 		const noData =
-			(isCurrentLiveStatus({ gateway_time: data.rover?.last_seen }) ||
-				isCurrentLiveStatus(data.telemetry)) &&
-			!hasCurrentGnssData(data.telemetry);
+			isCurrentDeviceStatus({ gateway_time: data.rover?.last_seen }) &&
+			!isCurrentTelemetry(data.telemetry);
+		const hasPosition = hasCurrentGnssData(data.telemetry);
 		txt("fix", noData ? "No Data" : fixLabel(t.fix));
 		setState("gnss-status", noData ? "no-data" : fixState(t.fix));
 		txt("sats", t.satellites);
@@ -104,9 +103,9 @@ async function refresh() {
 		txt("lost", t.packets_lost);
 		txt("wifi-rssi", state.gatewayOnline ? data.gateway?.last_wifi_rssi : "—");
 		txt("wifi-ssid", state.gatewayOnline ? "Online" : "Offline");
-		txt("lat", num(t.lat, 7));
-		txt("lon", num(t.lon, 7));
-		txt("alt", num(t.alt_m, 2));
+		txt("lat", hasPosition ? num(t.lat, 7) : "—");
+		txt("lon", hasPosition ? num(t.lon, 7) : "—");
+		txt("alt", hasPosition ? num(t.alt_m, 2) : "—");
 		updateSession(data.activeSession);
 	} catch {
 		updateOnlineState(null, null, null);
