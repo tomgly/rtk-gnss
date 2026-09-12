@@ -13,6 +13,11 @@ export const GET: APIRoute = async () => {
 			"SELECT * FROM devices WHERE device_id = gateway_id ORDER BY last_seen DESC LIMIT 1",
 		)
 		.first();
+	const rover = await db
+		.prepare(
+			"SELECT * FROM devices WHERE device_id != gateway_id ORDER BY last_seen DESC LIMIT 1",
+		)
+		.first();
 	const measurement = await db
 		.prepare("SELECT * FROM measurements ORDER BY gateway_time DESC LIMIT 1")
 		.first();
@@ -22,7 +27,7 @@ export const GET: APIRoute = async () => {
 		)
 		.first();
 	return new Response(
-		JSON.stringify({ gateway, telemetry, measurement, activeSession }),
+		JSON.stringify({ gateway, rover, telemetry, measurement, activeSession }),
 		{
 			headers: {
 				"content-type": "application/json",

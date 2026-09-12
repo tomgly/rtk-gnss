@@ -24,6 +24,8 @@ Every binary message starts with a common header:
 | `HEARTBEAT`   | Link health                                 |
 | `ACK`         | Acknowledge Gateway commands                |
 
+At Rover startup, the GNSS UART sends `GNGGA 1` and `GNRMC 1` to enable the required 1 Hz NMEA output from the WTRTK-982.
+
 ## Gateway to Rover
 
 | Type              | Purpose                            |
@@ -58,7 +60,7 @@ The Gateway follows the connected 2.4 GHz Wi-Fi channel and broadcasts a `CHANNE
 
 ## Telemetry
 
-Gateway sends a `gateway_status` at UTC one-minute boundaries while Wi-Fi is connected. It sends current telemetry whenever fresh Rover telemetry is present, including no-fix or stale GNSS data. This lets the Web UI distinguish a connected Rover with no current data from an offline Rover. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
+Gateway sends `gateway_status` at UTC one-minute boundaries while Wi-Fi is connected. When the Rover link is fresh, it also sends `rover_status`, which creates or refreshes the Rover device entry independently of GNSS fix quality. It sends current telemetry whenever fresh Rover telemetry is present, including no-fix or stale GNSS data. This lets the Web UI distinguish a connected Rover with no current data from an offline Rover. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
 
 Telemetry includes enough state to debug later:
 

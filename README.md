@@ -16,7 +16,7 @@ The project separates field sensing from Internet access: the Rover acquires GNS
 The current repository targets Rev.1 field testing and includes:
 
 - Rover firmware for GNSS parsing, local JSONL backup, physical-button controls, LED status, ESP-NOW telemetry, measurements, sessions, and RTCM forwarding to the receiver.
-- Gateway firmware for ESP-NOW, three saved Wi-Fi networks, one-minute live-status updates while connected to a Rover with a valid GNSS fix, local JSONL backup for durable records, Cloudflare API synchronization, retry handling, command polling, and optional NTRIP.
+- Gateway firmware for ESP-NOW, three saved Wi-Fi networks, one-minute Gateway and Rover-link status updates, local JSONL backup for durable records, Cloudflare API synchronization, retry handling, command polling, and optional NTRIP.
 - Astro + TypeScript + Tailwind CSS v4 Web UI deployed as one Cloudflare Worker with D1.
 - Public read-only live/history views and authenticated control operations.
 - Session, measurement, event, device, command, and debug records with end-to-end unique IDs, plus one current live-status record per Gateway.

@@ -16,7 +16,7 @@ The Rover owns the GNSS receiver connection and physical field interaction.
 
 Responsibilities:
 
-- Parse WTRTK-982 NMEA output.
+- Enable 1 Hz WTRTK-982 `GNGGA` and `GNRMC` output at startup, then parse the NMEA output.
 - Preserve GNSS UTC in local records.
 - Track PPS input.
 - Save local JSONL backup records.

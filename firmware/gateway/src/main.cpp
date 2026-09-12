@@ -303,6 +303,12 @@ static void queueLiveStatus() {
   if (!has) return;
   if (millis() - lastRoverMs > ROVER_TIMEOUT_MS) return;
 
+  char roverRecordId[ID_LEN]; makeId(roverRecordId);
+  String roverStatus = baseEnvelope("rover_status", roverRecordId, p.header.source_device_id);
+  roverStatus += ",\"espnow_rssi\":" + String(latestEspNowRssi) +
+                 ",\"protocol_version\":" + String(PROTOCOL_VERSION) + "}";
+  postJson(roverStatus);
+
   char rid[ID_LEN]; makeId(rid);
   String j = baseEnvelope("telemetry", rid, p.header.source_device_id);
   j += ",\"session_id\":\"" + String(p.session_id) + "\",\"gnss_time\":\"" + String(p.gnss.gnss_utc) +

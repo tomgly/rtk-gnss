@@ -326,6 +326,11 @@ static void setupEspNow() {
   esp_now_add_peer(&peer);
 }
 
+static void enableGnssOutput() {
+  gnssSerial.print("GNGGA 1\r\n");
+  gnssSerial.print("GNRMC 1\r\n");
+}
+
 static void recoverEspNowChannel() {
   static uint32_t lastHop = 0;
   static uint8_t channel = 1;
@@ -379,6 +384,7 @@ void setup() {
   led.setBrightness(32);
   LittleFS.begin(true);
   gnssSerial.begin(GNSS_BAUD, SERIAL_8N1, GNSS_RX_PIN, GNSS_TX_PIN);
+  enableGnssOutput();
   setupEspNow();
 }
 

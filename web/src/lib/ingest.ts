@@ -33,7 +33,7 @@ export async function ingest(db: D1Database, p: Payload) {
 		.run();
 
 	const raw = JSON.stringify(p);
-	if (type === "gateway_status") {
+	if (type === "gateway_status" || type === "rover_status") {
 		return { accepted: recordId };
 	} else if (type === "telemetry") {
 		const liveRecordId = `live:${gatewayId}`;
