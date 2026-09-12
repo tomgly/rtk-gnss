@@ -73,7 +73,7 @@ Telemetry includes enough state to debug later:
 - speed / course
 - GNSS age
 - Rover uptime and sequence
-- ESP-NOW RSSI and packet counters
+- ESP-NOW RSSI and cumulative packet counters since Gateway boot
 - Gateway Wi-Fi SSID / RSSI
 - Internet/server status
 - NTRIP state and RTCM age/bytes when enabled
