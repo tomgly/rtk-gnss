@@ -1,23 +1,23 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "rtk-gnss",
-  "main": "@astrojs/cloudflare/entrypoints/server",
-  "compatibility_date": "2026-09-12",
-  "compatibility_flags": ["nodejs_compat"],
-  "preview_urls": false,
-  "assets": {
-    "directory": "dist",
-    "binding": "ASSETS"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "rtk-gnss",
-      "database_id": "ad91c8cd-52b1-4ffa-80e0-65c6c9e90960",
-      "migrations_dir": "migrations"
-    }
-  ],
-  "vars": {
-    "DEFAULT_GATEWAY_ID": "gateway-rev1"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "rtk-gnss",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"compatibility_date": "2026-09-12",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"preview_urls": false,
+	"assets": {
+		"directory": "dist",
+		"binding": "ASSETS",
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "rtk-gnss",
+			"database_id": "207544f6-98de-4948-8c7c-a55c941fad28",
+			"migrations_dir": "migrations",
+			"remote": true,
+		},
+	],
 }
