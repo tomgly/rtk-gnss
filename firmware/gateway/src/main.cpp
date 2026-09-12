@@ -302,7 +302,6 @@ static void queueLiveStatus() {
   portEXIT_CRITICAL(&stateMux);
   if (!has) return;
   if (millis() - lastRoverMs > ROVER_TIMEOUT_MS) return;
-  if (p.gnss.fix_quality == 0 || p.gnss.gnss_age_ms > LIVE_STATUS_MAX_GNSS_AGE_MS) return;
 
   char rid[ID_LEN]; makeId(rid);
   String j = baseEnvelope("telemetry", rid, p.header.source_device_id);

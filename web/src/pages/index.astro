@@ -25,10 +25,14 @@ const isCurrentLiveStatus = (status: any) => {
 	);
 };
 const liveStatusCurrent = isCurrentLiveStatus(telemetry);
+const hasCurrentGnssData = (status: any) =>
+	isCurrentLiveStatus(status) &&
+	Number(status?.fix) > 0 &&
+	Number(status?.gnss_age_ms) <= 5_000;
 const gatewayStatusCurrent = isCurrentLiveStatus({
 	gateway_time: gateway?.last_seen,
 });
-const currentTelemetry = liveStatusCurrent ? telemetry : null;
+const currentTelemetry = hasCurrentGnssData(telemetry) ? telemetry : null;
 const activeSession = await db
 	.prepare(
 		"SELECT * FROM sessions WHERE active=1 ORDER BY started_at DESC LIMIT 1",
@@ -71,16 +75,26 @@ const fixState = (fix?: number) =>
 				data-state={gatewayStatusCurrent ? "connected" : "offline"}
 			>
 				<span class="status-dot"></span><span id="gateway-state-label"
-					>{gatewayStatusCurrent ? "Gateway online" : "Gateway offline"}</span
+					>{gatewayStatusCurrent ? "Gateway Online" : "Gateway Offline"}</span
 				>
 			</div>
 			<div
 				id="rover-state"
 				class="status-badge"
-				data-state={currentTelemetry?.fix ? "connected" : "offline"}
+				data-state={liveStatusCurrent
+					? currentTelemetry
+						? "connected"
+						: "no-data"
+					: "offline"}
 			>
 				<span class="status-dot"></span><span id="rover-state-label"
-					>{currentTelemetry?.fix ? "Rover online" : "Rover offline"}</span
+					>{
+						liveStatusCurrent
+							? currentTelemetry
+								? "Rover Online"
+								: "Rover Online · No Data"
+							: "Rover Offline"
+					}</span
 				>
 			</div>
 		</div>
@@ -89,12 +103,22 @@ const fixState = (fix?: number) =>
 	<section
 		id="gnss-status"
 		class="status-hero mb-4"
-		data-state={fixState(currentTelemetry?.fix)}
+		data-state={currentTelemetry
+			? fixState(currentTelemetry.fix)
+			: liveStatusCurrent
+				? "no-data"
+				: "offline"}
 	>
 		<div>
 			<div class="section-title text-inherit opacity-75">GNSS solution</div>
 			<div id="fix" class="mt-1 text-2xl font-semibold tracking-tight">
-				{fixLabel(currentTelemetry?.fix)}
+				{
+					currentTelemetry
+						? fixLabel(currentTelemetry.fix)
+						: liveStatusCurrent
+							? "No Data"
+							: "No Signal"
+				}
 			</div>
 		</div>
 		<div class="status-hero-meta">
@@ -312,20 +336,36 @@ const fixState = (fix?: number) =>
 				Date.now() - updatedAt <= 120000
 			);
 		};
+		const hasCurrentGnssData = (status) =>
+			isCurrentLiveStatus(status) &&
+			Number(status?.fix) > 0 &&
+			Number(status?.gnss_age_ms) <= 5000;
 		const updateOnlineState = (gateway, status) => {
 			const gatewayOnline = isCurrentLiveStatus({
 				gateway_time: gateway?.last_seen,
 			});
 			const liveStatusCurrent = isCurrentLiveStatus(status);
-			const roverOnline = liveStatusCurrent && Number(status?.fix) > 0;
+			const hasGnssData = hasCurrentGnssData(status);
+			const roverState = liveStatusCurrent
+				? hasGnssData
+					? "connected"
+					: "no-data"
+				: "offline";
 			txt(
 				"gateway-state-label",
-				gatewayOnline ? "Gateway online" : "Gateway offline",
+				gatewayOnline ? "Gateway Online" : "Gateway Offline",
 			);
-			txt("rover-state-label", roverOnline ? "Rover online" : "Rover offline");
+			txt(
+				"rover-state-label",
+				liveStatusCurrent
+					? hasGnssData
+						? "Rover Online"
+						: "Rover Online · No Data"
+					: "Rover Offline",
+			);
 			setState("gateway-state", gatewayOnline ? "connected" : "offline");
-			setState("rover-state", roverOnline ? "connected" : "offline");
-			return liveStatusCurrent ? status : {};
+			setState("rover-state", roverState);
+			return hasGnssData ? status : {};
 		};
 		async function refresh() {
 			try {
@@ -333,8 +373,11 @@ const fixState = (fix?: number) =>
 				if (!response.ok) throw new Error("Live request failed");
 				const data = await response.json();
 				const t = updateOnlineState(data.gateway, data.telemetry);
-				txt("fix", fixLabel(t.fix));
-				setState("gnss-status", fixState(t.fix));
+				const noData =
+					isCurrentLiveStatus(data.telemetry) &&
+					!hasCurrentGnssData(data.telemetry);
+				txt("fix", noData ? "No Data" : fixLabel(t.fix));
+				setState("gnss-status", noData ? "no-data" : fixState(t.fix));
 				txt("sats", t.satellites);
 				txt("hdop", t.hdop);
 				txt("esp-rssi", t.espnow_rssi);

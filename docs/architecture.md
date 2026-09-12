@@ -37,7 +37,7 @@ Responsibilities:
 - Keep an append-only JSONL backup/queue in LittleFS.
 - Connect to up to three configured Wi-Fi networks.
 - Synchronize UTC with NTP.
-- Send a Gateway online status at UTC one-minute boundaries while Wi-Fi is connected, plus a current GNSS live-status update only when fresh Rover telemetry contains a valid GNSS fix.
+- Send a Gateway online status and current Rover link status at UTC one-minute boundaries while Wi-Fi is connected. The live status includes stale or no-fix GNSS data so the Web UI can distinguish a connected Rover with no data from an offline Rover.
 - Synchronize records to the Cloudflare API and retry failures.
 - Poll server commands and forward them to the Rover.
 - Optionally connect to NTRIP, send Rover GGA, and forward RTCM to Rover.
@@ -61,6 +61,6 @@ All browser pages and browser data APIs require a signed login cookie. Gateway i
 
 ## Storage Strategy
 
-Rover and Gateway use JSONL as short-term backup and diagnostics. D1 is the long-term source of truth for measurements, sessions, and events. Gateway online status is sent when Wi-Fi is available. GNSS live status is not queued or retained locally; it is sent only when the Rover link is fresh and GNSS has a valid fix.
+Rover and Gateway use JSONL as short-term backup and diagnostics. D1 is the long-term source of truth for measurements, sessions, and events. Gateway online status is sent when Wi-Fi is available. GNSS live status is not queued or retained locally; it is sent while the Rover link is fresh, including stale or no-fix data.
 
 Each originating record receives a unique ID at creation. That ID is preserved unchanged through Rover, Gateway, and server storage. Repeated uploads are safe because server IDs are unique and ingestion is idempotent.

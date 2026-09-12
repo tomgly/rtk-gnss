@@ -11,7 +11,6 @@
 #define COMMAND_POLL_INTERVAL_MS 2000
 #define UPLOAD_RETRY_INTERVAL_MS 5000
 #define LIVE_STATUS_INTERVAL_SECONDS 60
-#define LIVE_STATUS_MAX_GNSS_AGE_MS 5000
 #define ROVER_TIMEOUT_MS 3000
 
 // Locally administered Wi-Fi MAC addresses for the prototype pair.

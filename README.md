@@ -87,7 +87,7 @@ A named measurement can be armed from the Web UI. The Rover LED turns blue until
 
 ## Live Status Timing
 
-The Gateway sends a lightweight online status at each UTC one-minute boundary while Wi-Fi is connected. It sends the current GNSS live-status update only when the Rover link is fresh and has a valid GNSS fix. The server replaces the prior live-status record for that Gateway rather than retaining a telemetry history.
+The Gateway sends a lightweight online status and the current Rover link status at each UTC one-minute boundary while Wi-Fi is connected. The Web UI distinguishes a connected Rover with no current GNSS data from an offline Rover. The server replaces the prior live-status record for that Gateway rather than retaining a telemetry history.
 
 The Gateway uses NTP-derived UTC. The Rover also preserves GNSS time so standalone Rover logs remain useful without Internet access.
 

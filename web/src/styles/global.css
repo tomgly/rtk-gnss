@@ -101,6 +101,9 @@ button {
 .status-badge[data-state="connected"] {
 	color: #15803d;
 }
+.status-badge[data-state="no-data"] {
+	color: #c2410c;
+}
 .status-badge[data-state="offline"] {
 	color: #b91c1c;
 }
@@ -125,6 +128,9 @@ button {
 }
 .status-hero[data-state="single"] {
 	color: #a16207;
+}
+.status-hero[data-state="no-data"] {
+	color: #c2410c;
 }
 .status-hero[data-state="offline"] {
 	color: #b91c1c;

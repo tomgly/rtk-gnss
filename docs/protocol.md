@@ -58,7 +58,7 @@ The Gateway follows the connected 2.4 GHz Wi-Fi channel and broadcasts a `CHANNE
 
 ## Telemetry
 
-Gateway sends a `gateway_status` at UTC one-minute boundaries while Wi-Fi is connected. It sends current telemetry only when fresh Rover telemetry is present and GNSS has a valid fix. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
+Gateway sends a `gateway_status` at UTC one-minute boundaries while Wi-Fi is connected. It sends current telemetry whenever fresh Rover telemetry is present, including no-fix or stale GNSS data. This lets the Web UI distinguish a connected Rover with no current data from an offline Rover. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
 
 Telemetry includes enough state to debug later:
 
