@@ -185,6 +185,21 @@ static bool sendRaw(const void *data, size_t len) {
   return result == ESP_OK;
 }
 
+static MeasurementGnssState measurementGnss(const GnssState &source) {
+  MeasurementGnssState snapshot{};
+  snapshot.lat = source.lat;
+  snapshot.lon = source.lon;
+  snapshot.altitude_m = source.altitude_m;
+  snapshot.hdop = source.hdop;
+  snapshot.speed_mps = source.speed_mps;
+  snapshot.course_deg = source.course_deg;
+  snapshot.fix_quality = source.fix_quality;
+  snapshot.satellites = source.satellites;
+  snapshot.gnss_age_ms = source.gnss_age_ms;
+  strlcpy(snapshot.gnss_utc, source.gnss_utc, sizeof(snapshot.gnss_utc));
+  return snapshot;
+}
+
 static void sendTelemetry() {
   TelemetryPayload p{};
   initHeader(p.header, MsgType::TELEMETRY, sizeof(p), ++seqNo, ROVER_DEVICE_ID);
@@ -208,8 +223,9 @@ static void sendHeartbeat() {
 static void captureMeasurement(uint8_t trigger) {
   MeasurementPayload p{};
   initHeader(p.header, MsgType::MEASUREMENT, sizeof(p), ++seqNo, ROVER_DEVICE_ID);
-  p.gnss = gnss;
-  p.gnss.gnss_age_ms = millis() - lastNmeaMs;
+  GnssState snapshot = gnss;
+  snapshot.gnss_age_ms = millis() - lastNmeaMs;
+  p.gnss = measurementGnss(snapshot);
   if (armed && armedMeasurementId[0]) strlcpy(p.measurement_id, armedMeasurementId, sizeof(p.measurement_id));
   else makeId(p.measurement_id);
   strlcpy(lastMeasurementId, p.measurement_id, sizeof(lastMeasurementId));

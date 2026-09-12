@@ -2,7 +2,7 @@
 
 ## Protocol Version
 
-Initial ESP-NOW protocol version: `1`.
+Current ESP-NOW protocol version: `2`.
 
 Every binary message starts with a common header:
 
@@ -51,6 +51,8 @@ Recommended logical identifiers:
 - `command_id`
 
 The firmware implementation uses compact UUID-like hexadecimal IDs to keep ESP-NOW payload size predictable.
+
+Every ESP-NOW message is limited to 250 bytes. Telemetry includes the latest GGA sentence and fits this limit exactly. Measurement snapshots omit GGA because the Gateway does not need it to store a point.
 
 ## Telemetry
 

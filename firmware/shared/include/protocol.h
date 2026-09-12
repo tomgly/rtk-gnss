@@ -4,12 +4,14 @@
 
 namespace rtk {
 
-constexpr uint8_t PROTOCOL_VERSION = 1;
+constexpr uint8_t PROTOCOL_VERSION = 2;
 constexpr size_t DEVICE_ID_LEN = 17;
 constexpr size_t ID_LEN = 33;
 constexpr size_t NAME_LEN = 48;
+constexpr size_t GNSS_UTC_LEN = 21;
 constexpr size_t GGA_LEN = 96;
 constexpr size_t RTCM_FRAGMENT_BYTES = 180;
+constexpr size_t ESPNOW_MAX_PAYLOAD_BYTES = 250;
 
 enum class MsgType : uint8_t {
   TELEMETRY = 1,
@@ -44,8 +46,21 @@ struct __attribute__((packed)) GnssState {
   uint8_t fix_quality;
   uint8_t satellites;
   uint32_t gnss_age_ms;
-  char gnss_utc[24];
+  char gnss_utc[GNSS_UTC_LEN];
   char gga[GGA_LEN];
+};
+
+struct __attribute__((packed)) MeasurementGnssState {
+  double lat;
+  double lon;
+  float altitude_m;
+  float hdop;
+  float speed_mps;
+  float course_deg;
+  uint8_t fix_quality;
+  uint8_t satellites;
+  uint32_t gnss_age_ms;
+  char gnss_utc[GNSS_UTC_LEN];
 };
 
 struct __attribute__((packed)) TelemetryPayload {
@@ -57,7 +72,7 @@ struct __attribute__((packed)) TelemetryPayload {
 
 struct __attribute__((packed)) MeasurementPayload {
   Header header;
-  GnssState gnss;
+  MeasurementGnssState gnss;
   char measurement_id[ID_LEN];
   char session_id[ID_LEN];
   char name[NAME_LEN];
@@ -107,6 +122,11 @@ struct __attribute__((packed)) RtcmFragmentPayload {
   uint16_t data_len;
   uint8_t data[RTCM_FRAGMENT_BYTES];
 };
+
+static_assert(sizeof(TelemetryPayload) <= ESPNOW_MAX_PAYLOAD_BYTES);
+static_assert(sizeof(MeasurementPayload) <= ESPNOW_MAX_PAYLOAD_BYTES);
+static_assert(sizeof(EventPayload) <= ESPNOW_MAX_PAYLOAD_BYTES);
+static_assert(sizeof(RtcmFragmentPayload) <= ESPNOW_MAX_PAYLOAD_BYTES);
 
 inline void makeId(char out[ID_LEN]) {
   uint64_t a = esp_random();
