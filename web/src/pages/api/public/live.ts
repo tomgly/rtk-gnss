@@ -24,12 +24,12 @@ export const GET: APIRoute = async () => {
 			).getStatus()
 		: null;
 	const gateway = liveStatus?.gateway
-		? { ...liveStatus.gateway, last_seen: liveStatus.gateway.gateway_time }
+		? liveStatus.gateway
 		: liveStatus
 			? null
 			: persistedGateway;
 	const rover = liveStatus?.rover
-		? { ...liveStatus.rover, last_seen: liveStatus.rover.gateway_time }
+		? liveStatus.rover
 		: liveStatus
 			? null
 			: persistedRover;

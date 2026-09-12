@@ -78,13 +78,25 @@ export class LiveStatus extends DurableObject<Env> {
 		const current = [...statuses.values()].filter(
 			(status) => Date.now() - status.receivedAt <= STATUS_FRESH_MS,
 		);
+		const gateway = current.find(
+			(status) => status.payload.type === "gateway_status",
+		);
+		const rover = current.find(
+			(status) => status.payload.type === "rover_status",
+		);
 		return {
-			gateway:
-				current.find((status) => status.payload.type === "gateway_status")
-					?.payload ?? null,
-			rover:
-				current.find((status) => status.payload.type === "rover_status")
-					?.payload ?? null,
+			gateway: gateway
+				? {
+						...gateway.payload,
+						last_seen: new Date(gateway.receivedAt).toISOString(),
+					}
+				: null,
+			rover: rover
+				? {
+						...rover.payload,
+						last_seen: new Date(rover.receivedAt).toISOString(),
+					}
+				: null,
 		};
 	}
 }
