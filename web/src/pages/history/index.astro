@@ -57,20 +57,30 @@ const fixLabel = (fix?: number) =>
 		<div class="flex items-center justify-between px-4 py-3">
 			<div class="section-title">Sessions</div>
 			<nav class="grid grid-cols-2 gap-4 text-sm">
-				{sessionPage > 1 ? (
-							<a class="pager-link" href={pageUrl("sessions_page", sessionPage - 1)}>
-								Previous
-							</a>
-						) : (
-							<span class="pager-link pager-link-disabled">Previous</span>
-						)}
-						{hasNextSessionPage ? (
-							<a class="pager-link" href={pageUrl("sessions_page", sessionPage + 1)}>
-								Next
-							</a>
-						) : (
-							<span class="pager-link pager-link-disabled">Next</span>
-						)}
+				{
+					sessionPage > 1 ? (
+						<a
+							class="pager-link"
+							href={pageUrl("sessions_page", sessionPage - 1)}
+						>
+							Previous
+						</a>
+					) : (
+						<span class="pager-link pager-link-disabled">Previous</span>
+					)
+				}
+				{
+					hasNextSessionPage ? (
+						<a
+							class="pager-link"
+							href={pageUrl("sessions_page", sessionPage + 1)}
+						>
+							Next
+						</a>
+					) : (
+						<span class="pager-link pager-link-disabled">Next</span>
+					)
+				}
 			</nav>
 		</div>
 		{
@@ -133,26 +143,30 @@ const fixLabel = (fix?: number) =>
 		<div class="flex items-center justify-between px-4 py-3">
 			<div class="section-title">Measurements</div>
 			<nav class="grid grid-cols-2 gap-4 text-sm">
-				{measurementPage > 1 ? (
-							<a
-								class="pager-link"
-								href={pageUrl("measurements_page", measurementPage - 1)}
-							>
-								Previous
-							</a>
-						) : (
-							<span class="pager-link pager-link-disabled">Previous</span>
-						)}
-						{hasNextMeasurementPage ? (
-							<a
-								class="pager-link"
-								href={pageUrl("measurements_page", measurementPage + 1)}
-							>
-								Next
-							</a>
-						) : (
-							<span class="pager-link pager-link-disabled">Next</span>
-						)}
+				{
+					measurementPage > 1 ? (
+						<a
+							class="pager-link"
+							href={pageUrl("measurements_page", measurementPage - 1)}
+						>
+							Previous
+						</a>
+					) : (
+						<span class="pager-link pager-link-disabled">Previous</span>
+					)
+				}
+				{
+					hasNextMeasurementPage ? (
+						<a
+							class="pager-link"
+							href={pageUrl("measurements_page", measurementPage + 1)}
+						>
+							Next
+						</a>
+					) : (
+						<span class="pager-link pager-link-disabled">Next</span>
+					)
+				}
 			</nav>
 		</div>
 		{
@@ -233,19 +247,27 @@ const fixLabel = (fix?: number) =>
 		</div>
 	</dialog>
 	<script>
-		const dialog = document.querySelector("#delete-session-dialog");
-		const description = document.querySelector("#delete-session-description");
-		const confirmButton = document.querySelector("#confirm-delete-session");
+		const dialog = document.querySelector<HTMLDialogElement>(
+			"#delete-session-dialog",
+		);
+		const description = document.querySelector<HTMLElement>(
+			"#delete-session-description",
+		);
+		const confirmButton = document.querySelector<HTMLButtonElement>(
+			"#confirm-delete-session",
+		);
 		let sessionId = "";
 
-		document.querySelectorAll(".session-delete").forEach((button) => {
-			button.addEventListener("click", () => {
-				sessionId = button.dataset.sessionId || "";
-				if (description)
-					description.textContent = `Delete ${button.dataset.sessionName || "this session"} and its measurements and events? This cannot be undone.`;
-				dialog?.showModal();
+		document
+			.querySelectorAll<HTMLButtonElement>(".session-delete")
+			.forEach((button) => {
+				button.addEventListener("click", () => {
+					sessionId = button.dataset.sessionId || "";
+					if (description)
+						description.textContent = `Delete ${button.dataset.sessionName || "this session"} and its measurements and events? This cannot be undone.`;
+					dialog?.showModal();
+				});
 			});
-		});
 		document
 			.querySelector("#cancel-delete-session")
 			?.addEventListener("click", () => dialog?.close());

@@ -1,36 +1,59 @@
 ---
 const rover = [
-  ["Red blink", "No GNSS fix", "#b91c1c"],
-  ["Yellow", "Single / differential fix", "#ca8a04"],
-  ["Cyan", "RTK Float", "#0891b2"],
-  ["Green", "RTK Fixed", "#15803d"],
-  ["Purple blink", "Gateway link lost", "#7e22ce"],
-  ["Blue", "Named measurement armed", "#1d4ed8"],
-  ["White flash", "ESP-NOW communication", "#9ca3af"],
+	["Red blink", "No GNSS fix", "#b91c1c"],
+	["Yellow", "Single / differential fix", "#ca8a04"],
+	["Cyan", "RTK Float", "#0891b2"],
+	["Green", "RTK Fixed", "#15803d"],
+	["Purple blink", "Gateway link lost", "#7e22ce"],
+	["Blue", "Named measurement armed", "#1d4ed8"],
+	["White flash", "ESP-NOW communication", "#9ca3af"],
 ];
 const gateway = [
-  ["Red", "Rover unavailable", "#b91c1c"],
-  ["Orange", "Rover online, Internet unavailable", "#c2410c"],
-  ["Blue", "Internet connected", "#1d4ed8"],
-  ["Green", "Cloud API healthy", "#15803d"],
-  ["White flash", "Rover / server traffic", "#9ca3af"],
+	["Red", "Rover unavailable", "#b91c1c"],
+	["Orange", "Rover online, Internet unavailable", "#c2410c"],
+	["Blue", "Internet connected", "#1d4ed8"],
+	["Green", "Cloud API healthy", "#15803d"],
+	["White flash", "Rover / server traffic", "#9ca3af"],
 ];
 ---
+
 <div class="grid gap-5 md:grid-cols-2">
-  <div>
-    <h3 class="mb-2 text-sm font-semibold">Rover</h3>
-    <div class="space-y-2 text-sm">
-      {rover.map(([name, meaning, color]) => (
-        <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full border border-black/10" style={`background:${color}`}></span><span class="w-28 font-medium">{name}</span><span class="text-gray-600">{meaning}</span></div>
-      ))}
-    </div>
-  </div>
-  <div>
-    <h3 class="mb-2 text-sm font-semibold">Gateway</h3>
-    <div class="space-y-2 text-sm">
-      {gateway.map(([name, meaning, color]) => (
-        <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full border border-black/10" style={`background:${color}`}></span><span class="w-28 font-medium">{name}</span><span class="text-gray-600">{meaning}</span></div>
-      ))}
-    </div>
-  </div>
+	<div>
+		<h3 class="mb-2 text-sm font-semibold">Rover</h3>
+		<div class="space-y-2 text-sm">
+			{
+				rover.map(([name, meaning, color]) => (
+					<div class="flex items-center gap-3">
+						<>
+							<span
+								class="h-3 w-3 rounded-full border border-black/10"
+								style={`background:${color}`}
+							/>
+							<span class="w-28 font-medium">{name}</span>
+							<span class="text-gray-600">{meaning}</span>
+						</>
+					</div>
+				))
+			}
+		</div>
+	</div>
+	<div>
+		<h3 class="mb-2 text-sm font-semibold">Gateway</h3>
+		<div class="space-y-2 text-sm">
+			{
+				gateway.map(([name, meaning, color]) => (
+					<div class="flex items-center gap-3">
+						<>
+							<span
+								class="h-3 w-3 rounded-full border border-black/10"
+								style={`background:${color}`}
+							/>
+							<span class="w-28 font-medium">{name}</span>
+							<span class="text-gray-600">{meaning}</span>
+						</>
+					</div>
+				))
+			}
+		</div>
+	</div>
 </div>

@@ -11,7 +11,9 @@ const telemetry = await db
 	)
 	.first<any>();
 const gateway = await db
-	.prepare("SELECT * FROM devices WHERE device_id = gateway_id ORDER BY last_seen DESC LIMIT 1")
+	.prepare(
+		"SELECT * FROM devices WHERE device_id = gateway_id ORDER BY last_seen DESC LIMIT 1",
+	)
 	.first<any>();
 const LIVE_STATUS_MAX_AGE_MS = 120_000;
 const isCurrentLiveStatus = (status: any) => {
@@ -23,7 +25,9 @@ const isCurrentLiveStatus = (status: any) => {
 	);
 };
 const liveStatusCurrent = isCurrentLiveStatus(telemetry);
-const gatewayStatusCurrent = isCurrentLiveStatus({ gateway_time: gateway?.last_seen });
+const gatewayStatusCurrent = isCurrentLiveStatus({
+	gateway_time: gateway?.last_seen,
+});
 const currentTelemetry = liveStatusCurrent ? telemetry : null;
 const activeSession = await db
 	.prepare(
@@ -203,7 +207,7 @@ const fixState = (fix?: number) =>
 								placeholder="Fence NW Corner"
 								required
 							/>
-								<button class="btn control-action-button" type="submit">
+							<button class="btn control-action-button" type="submit">
 								Arm Rover
 							</button>
 						</form>
@@ -309,7 +313,9 @@ const fixState = (fix?: number) =>
 			);
 		};
 		const updateOnlineState = (gateway, status) => {
-			const gatewayOnline = isCurrentLiveStatus({ gateway_time: gateway?.last_seen });
+			const gatewayOnline = isCurrentLiveStatus({
+				gateway_time: gateway?.last_seen,
+			});
 			const liveStatusCurrent = isCurrentLiveStatus(status);
 			const roverOnline = liveStatusCurrent && Number(status?.fix) > 0;
 			txt(
