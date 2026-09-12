@@ -10,6 +10,9 @@ const telemetry = await db
 		"SELECT * FROM telemetry WHERE record_id LIKE 'live:%' ORDER BY gateway_time DESC LIMIT 1",
 	)
 	.first<any>();
+const gateway = await db
+	.prepare("SELECT * FROM devices WHERE device_id = gateway_id ORDER BY last_seen DESC LIMIT 1")
+	.first<any>();
 const LIVE_STATUS_MAX_AGE_MS = 120_000;
 const isCurrentLiveStatus = (status: any) => {
 	const updatedAt = Date.parse(status?.gateway_time ?? "");
@@ -20,6 +23,7 @@ const isCurrentLiveStatus = (status: any) => {
 	);
 };
 const liveStatusCurrent = isCurrentLiveStatus(telemetry);
+const gatewayStatusCurrent = isCurrentLiveStatus({ gateway_time: gateway?.last_seen });
 const currentTelemetry = liveStatusCurrent ? telemetry : null;
 const activeSession = await db
 	.prepare(
@@ -60,10 +64,10 @@ const fixState = (fix?: number) =>
 			<div
 				id="gateway-state"
 				class="status-badge"
-				data-state={liveStatusCurrent ? "connected" : "offline"}
+				data-state={gatewayStatusCurrent ? "connected" : "offline"}
 			>
 				<span class="status-dot"></span><span id="gateway-state-label"
-					>{liveStatusCurrent ? "Gateway online" : "Gateway offline"}</span
+					>{gatewayStatusCurrent ? "Gateway online" : "Gateway offline"}</span
 				>
 			</div>
 			<div
@@ -304,9 +308,10 @@ const fixState = (fix?: number) =>
 				Date.now() - updatedAt <= 120000
 			);
 		};
-		const updateOnlineState = (status) => {
-			const gatewayOnline = isCurrentLiveStatus(status);
-			const roverOnline = gatewayOnline && Number(status?.fix) > 0;
+		const updateOnlineState = (gateway, status) => {
+			const gatewayOnline = isCurrentLiveStatus({ gateway_time: gateway?.last_seen });
+			const liveStatusCurrent = isCurrentLiveStatus(status);
+			const roverOnline = liveStatusCurrent && Number(status?.fix) > 0;
 			txt(
 				"gateway-state-label",
 				gatewayOnline ? "Gateway online" : "Gateway offline",
@@ -314,14 +319,14 @@ const fixState = (fix?: number) =>
 			txt("rover-state-label", roverOnline ? "Rover online" : "Rover offline");
 			setState("gateway-state", gatewayOnline ? "connected" : "offline");
 			setState("rover-state", roverOnline ? "connected" : "offline");
-			return gatewayOnline ? status : {};
+			return liveStatusCurrent ? status : {};
 		};
 		async function refresh() {
 			try {
 				const response = await fetch("/api/public/live", { cache: "no-store" });
 				if (!response.ok) throw new Error("Live request failed");
 				const data = await response.json();
-				const t = updateOnlineState(data.telemetry);
+				const t = updateOnlineState(data.gateway, data.telemetry);
 				txt("fix", fixLabel(t.fix));
 				setState("gnss-status", fixState(t.fix));
 				txt("sats", t.satellites);

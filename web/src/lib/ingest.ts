@@ -33,7 +33,9 @@ export async function ingest(db: D1Database, p: Payload) {
 		.run();
 
 	const raw = JSON.stringify(p);
-	if (type === "telemetry") {
+	if (type === "gateway_status") {
+		return { accepted: recordId };
+	} else if (type === "telemetry") {
 		const liveRecordId = `live:${gatewayId}`;
 		await db
 			.prepare(
