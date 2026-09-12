@@ -5,7 +5,11 @@ import { isAuthenticated } from "../lib/auth";
 if (await isAuthenticated(Astro)) return Astro.redirect("/");
 ---
 
-<BaseLayout title="Login · RTK-GNSS" fullHeight>
+<BaseLayout
+	title="Log in · RTK-GNSS"
+	description="Secure sign in to the RTK-GNSS field console."
+	fullHeight
+>
 	<div class="w-full max-w-sm panel p-5">
 		<h1 class="mb-5 text-xl font-semibold">Log in</h1>
 		<form id="login-form" class="space-y-3">

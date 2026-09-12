@@ -47,7 +47,11 @@ const fixLabel = (fix?: number) =>
 					: "NO FIX";
 ---
 
-<BaseLayout title="History · RTK-GNSS" authenticated={authenticated}>
+<BaseLayout
+	title="History · RTK-GNSS"
+	description="Review RTK-GNSS field measurement sessions, GNSS coordinates, fix quality, and recorded data history."
+	authenticated={authenticated}
+>
 	<h1 class="mb-4 text-2xl font-semibold tracking-tight">History</h1>
 	<section class="panel mb-4">
 		<div class="flex items-center justify-between px-4 py-3">

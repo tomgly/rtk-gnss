@@ -9,7 +9,11 @@ const devices = await env.DB.prepare(
 ).all<any>();
 ---
 
-<BaseLayout title="System · RTK-GNSS" authenticated={authenticated}>
+<BaseLayout
+	title="System · RTK-GNSS"
+	description="Inspect RTK-GNSS Rover, Gateway, Wi-Fi, ESP-NOW, and NTRIP system status for field operation."
+	authenticated={authenticated}
+>
 	<h1 class="mb-4 text-2xl font-semibold tracking-tight">System</h1>
 	<section class="panel mb-4">
 		<div class="px-4 py-3 section-title">Devices</div>
