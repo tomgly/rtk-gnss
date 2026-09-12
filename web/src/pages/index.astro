@@ -171,10 +171,18 @@ const fixState = (fix?: number) =>
 				>
 			</div>
 			<div class="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-900">
-				<span class="text-gray-500">Lost packets</span>
-				<strong id="lost" class="mono"
-					>{currentTelemetry?.packets_lost ?? "—"}</strong
-				>
+				<span class="text-gray-500">Packet loss </span>
+				<strong id="lost" class="mono">
+					{
+						currentTelemetry
+							? `${(
+									(currentTelemetry.packets_lost /
+										(currentTelemetry.packets_received + currentTelemetry.packets_lost)) *
+									100
+								).toFixed(1)}%`
+							: "—"
+					}
+				</strong>
 			</div>
 		</section>
 
