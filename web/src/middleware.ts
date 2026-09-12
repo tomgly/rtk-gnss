@@ -7,17 +7,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		!pathname.startsWith("/api/") &&
 		!pathname.startsWith("/_astro/") &&
 		pathname !== "/login";
-	const protectsApi = pathname.startsWith("/api/public/");
 
-	if (!protectsPage && !protectsApi) return next();
+	if (!protectsPage) return next();
 	if (await isAuthenticated(context)) return next();
-
-	if (protectsApi) {
-		return new Response(JSON.stringify({ error: "unauthorized" }), {
-			status: 401,
-			headers: { "content-type": "application/json" },
-		});
-	}
 
 	return context.redirect("/login");
 });
