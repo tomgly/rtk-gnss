@@ -16,7 +16,7 @@ The project separates field sensing from Internet access: the Rover acquires GNS
 The current repository targets Rev.1 field testing and includes:
 
 - Rover firmware for GNSS parsing, local JSONL backup, physical-button controls, LED status, ESP-NOW telemetry, measurements, sessions, and RTCM forwarding to the receiver.
-- Gateway firmware for ESP-NOW, three saved Wi-Fi networks, one-minute Gateway and Rover-link status updates, local JSONL backup for durable records, Cloudflare API synchronization, retry handling, command polling, and optional NTRIP.
+- Gateway firmware for ESP-NOW, three saved Wi-Fi networks, five-second Gateway and Rover-link status updates, local JSONL backup for durable records, Cloudflare API synchronization, retry handling, command polling, and optional NTRIP.
 - Astro + TypeScript + Tailwind CSS v4 Web UI deployed as one Cloudflare Worker with D1.
 - Public read-only live/history views and authenticated control operations.
 - Session, measurement, event, device, command, and debug records with end-to-end unique IDs, plus one current live-status record per Gateway.
@@ -87,7 +87,7 @@ A named measurement can be armed from the Web UI. The Rover LED turns blue until
 
 ## Live Status Timing
 
-The Gateway sends a lightweight online status and the current Rover link status at each UTC one-minute boundary while Wi-Fi is connected. The Web UI distinguishes a connected Rover with no current GNSS data from an offline Rover. The server replaces the prior live-status record for that Gateway rather than retaining a telemetry history.
+The Gateway sends lightweight Gateway and Rover-link status every five seconds while Wi-Fi is connected. A Durable Object provides the current state to the Web UI, while D1 records it only once a minute or when a device reconnects. The Web UI distinguishes a connected Rover with no current GNSS data from an offline Rover.
 
 The Gateway uses NTP-derived UTC. The Rover also preserves GNSS time so standalone Rover logs remain useful without Internet access.
 

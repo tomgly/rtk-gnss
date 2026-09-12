@@ -4,7 +4,7 @@ const n = (v: unknown) => (typeof v === "number" ? v : null);
 const s = (v: unknown) => (typeof v === "string" ? v : null);
 const b = (v: unknown) => (v ? 1 : 0);
 
-export async function ingest(db: D1Database, p: Payload) {
+export async function ingest(db: D1Database, p: Payload, persistDevice = true) {
 	const type = s(p.type);
 	const recordId = s(p.record_id);
 	const deviceId = s(p.device_id);
@@ -14,23 +14,25 @@ export async function ingest(db: D1Database, p: Payload) {
 		throw new Error("missing required envelope fields");
 	}
 
-	await db
-		.prepare(
-			`INSERT INTO devices (device_id, gateway_id, last_seen, last_espnow_rssi, last_wifi_rssi, protocol_version)
+	if (persistDevice) {
+		await db
+			.prepare(
+				`INSERT INTO devices (device_id, gateway_id, last_seen, last_espnow_rssi, last_wifi_rssi, protocol_version)
        VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(device_id) DO UPDATE SET gateway_id=excluded.gateway_id,last_seen=excluded.last_seen,
        last_espnow_rssi=excluded.last_espnow_rssi,last_wifi_rssi=excluded.last_wifi_rssi,
        protocol_version=excluded.protocol_version`,
-		)
-		.bind(
-			deviceId,
-			gatewayId,
-			gatewayTime,
-			n(p.espnow_rssi),
-			n(p.wifi_rssi),
-			n(p.protocol_version),
-		)
-		.run();
+			)
+			.bind(
+				deviceId,
+				gatewayId,
+				gatewayTime,
+				n(p.espnow_rssi),
+				n(p.wifi_rssi),
+				n(p.protocol_version),
+			)
+			.run();
+	}
 
 	const raw = JSON.stringify(p);
 	if (type === "gateway_status" || type === "rover_status") {

@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { requireDevice } from "../../../lib/device-auth";
 import { ingest } from "../../../lib/ingest";
+import { toLiveStatus } from "../../../lib/live-status";
 
 export const POST: APIRoute = async (context) => {
 	const denied = requireDevice(context);
@@ -10,7 +11,17 @@ export const POST: APIRoute = async (context) => {
 		const body = await context.request.json();
 		if (!body || typeof body !== "object" || Array.isArray(body))
 			throw new Error("invalid payload");
-		const result = await ingest(env.DB, body as Record<string, unknown>);
+		const payload = body as Record<string, unknown>;
+		const status = toLiveStatus(payload);
+		if (status) {
+			const liveStatus = env.LIVE_STATUS.getByName(status.gateway_id);
+			const { persist } = await liveStatus.update(status);
+			const result = await ingest(env.DB, payload, persist);
+			return new Response(JSON.stringify(result), {
+				headers: { "content-type": "application/json" },
+			});
+		}
+		const result = await ingest(env.DB, payload);
 		return new Response(JSON.stringify(result), {
 			headers: { "content-type": "application/json" },
 		});

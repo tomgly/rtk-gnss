@@ -60,7 +60,7 @@ The Gateway follows the connected 2.4 GHz Wi-Fi channel and broadcasts a `CHANNE
 
 ## Telemetry
 
-Gateway sends `gateway_status` at UTC one-minute boundaries while Wi-Fi is connected. When the Rover link is fresh, it also sends `rover_status`, which creates or refreshes the Rover device entry independently of GNSS fix quality. It sends current telemetry whenever fresh Rover telemetry is present, including no-fix or stale GNSS data. This lets the Web UI distinguish a connected Rover with no current data from an offline Rover. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
+Gateway sends `gateway_status` every five seconds while Wi-Fi is connected. When the Rover link is fresh, it also sends `rover_status`, which creates or refreshes the Rover device entry independently of GNSS fix quality. A per-Gateway Durable Object retains this current state for the Web UI. D1 records status on the first update, after reconnection, and once every minute. Gateway sends current telemetry once per minute whenever fresh Rover telemetry is present, including no-fix or stale GNSS data. This lets the Web UI distinguish a connected Rover with no current data from an offline Rover.
 
 Telemetry includes enough state to debug later:
 

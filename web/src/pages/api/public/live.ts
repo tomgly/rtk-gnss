@@ -8,16 +8,31 @@ export const GET: APIRoute = async () => {
 			"SELECT * FROM telemetry WHERE record_id LIKE 'live:%' ORDER BY gateway_time DESC LIMIT 1",
 		)
 		.first();
-	const gateway = await db
+	const persistedGateway = await db
 		.prepare(
 			"SELECT * FROM devices WHERE device_id = gateway_id ORDER BY last_seen DESC LIMIT 1",
 		)
 		.first();
-	const rover = await db
+	const persistedRover = await db
 		.prepare(
 			"SELECT * FROM devices WHERE device_id != gateway_id ORDER BY last_seen DESC LIMIT 1",
 		)
 		.first();
+	const liveStatus = persistedGateway
+		? await env.LIVE_STATUS.getByName(
+				String(persistedGateway.gateway_id ?? persistedGateway.device_id),
+			).getStatus()
+		: null;
+	const gateway = liveStatus?.gateway
+		? { ...liveStatus.gateway, last_seen: liveStatus.gateway.gateway_time }
+		: liveStatus
+			? null
+			: persistedGateway;
+	const rover = liveStatus?.rover
+		? { ...liveStatus.rover, last_seen: liveStatus.rover.gateway_time }
+		: liveStatus
+			? null
+			: persistedRover;
 	const measurement = await db
 		.prepare("SELECT * FROM measurements ORDER BY gateway_time DESC LIMIT 1")
 		.first();

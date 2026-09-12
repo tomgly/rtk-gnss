@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "rtk-gnss",
-	"main": "@astrojs/cloudflare/entrypoints/server",
+	"main": "./src/worker.ts",
 	"compatibility_date": "2026-09-12",
 	"compatibility_flags": ["nodejs_compat"],
 	"preview_urls": false,
@@ -16,6 +16,20 @@
 			"database_id": "207544f6-98de-4948-8c7c-a55c941fad28",
 			"migrations_dir": "migrations",
 			"remote": true,
+		},
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "LIVE_STATUS",
+				"class_name": "LiveStatus",
+			},
+		],
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["LiveStatus"],
 		},
 	],
 }

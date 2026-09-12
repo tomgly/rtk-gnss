@@ -20,7 +20,7 @@ const rover = await db
 		"SELECT * FROM devices WHERE device_id != gateway_id ORDER BY last_seen DESC LIMIT 1",
 	)
 	.first<any>();
-const LIVE_STATUS_MAX_AGE_MS = 120_000;
+const LIVE_STATUS_MAX_AGE_MS = 15_000;
 const isCurrentLiveStatus = (status: any) => {
 	const updatedAt = Date.parse(status?.gateway_time ?? "");
 	return (

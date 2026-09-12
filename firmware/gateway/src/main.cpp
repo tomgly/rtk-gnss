@@ -40,7 +40,8 @@ static uint32_t roverLostPackets = 0;
 static uint32_t lastRoverMs = 0;
 static uint32_t lastServerOkMs = 0;
 static uint32_t lastWifiAttemptMs = 0;
-static uint32_t lastBoundaryEpoch = 0;
+static uint32_t lastStatusEpoch = 0;
+static uint32_t lastTelemetryEpoch = 0;
 static uint32_t lastChannelBeaconMs = 0;
 static uint32_t lastCommandId = 0;
 static uint32_t rtcmBytes = 0;
@@ -283,8 +284,8 @@ static void syncQueue() {
 static void queueLiveStatus() {
   time_t now = time(nullptr);
   if (now < 1700000000) return;  // NTP not valid yet.
-  if ((now % LIVE_STATUS_INTERVAL_SECONDS) != 0 || (uint32_t)now == lastBoundaryEpoch) return;
-  lastBoundaryEpoch = (uint32_t)now;
+  if ((now % LIVE_STATUS_INTERVAL_SECONDS) != 0 || (uint32_t)now == lastStatusEpoch) return;
+  lastStatusEpoch = (uint32_t)now;
 
   if (WiFi.status() != WL_CONNECTED) return;
 
@@ -308,6 +309,9 @@ static void queueLiveStatus() {
   roverStatus += ",\"espnow_rssi\":" + String(latestEspNowRssi) +
                  ",\"protocol_version\":" + String(PROTOCOL_VERSION) + "}";
   postJson(roverStatus);
+
+  if ((now % TELEMETRY_INTERVAL_SECONDS) != 0 || (uint32_t)now == lastTelemetryEpoch) return;
+  lastTelemetryEpoch = (uint32_t)now;
 
   char rid[ID_LEN]; makeId(rid);
   String j = baseEnvelope("telemetry", rid, p.header.source_device_id);

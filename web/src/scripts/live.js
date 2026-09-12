@@ -48,7 +48,7 @@ const isCurrentLiveStatus = (status) => {
 	return (
 		Number.isFinite(updatedAt) &&
 		updatedAt <= Date.now() &&
-		Date.now() - updatedAt <= 120000
+		Date.now() - updatedAt <= 15000
 	);
 };
 const hasCurrentGnssData = (status) =>
@@ -112,7 +112,8 @@ async function refresh() {
 		updateOnlineState(null, null, null);
 	}
 }
-setInterval(refresh, 2000);
+refresh();
+setInterval(refresh, 5000);
 
 const controls = document.getElementById("controls");
 const controlsSummary = controls?.querySelector("summary");
