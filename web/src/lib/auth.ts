@@ -1,51 +1,94 @@
 import type { APIContext } from "astro";
 import { env } from "cloudflare:workers";
 
-const COOKIE_NAME = "rtk_admin";
+const COOKIE_NAME = "rtk_session";
 const SESSION_HOURS = 12;
+const encoder = new TextEncoder();
 
-export async function createAdminSession(context: APIContext) {
-  const token = crypto.randomUUID().replaceAll("-", "");
-  const expires = new Date(Date.now() + SESSION_HOURS * 3600_000).toISOString();
-  await env.DB.prepare(
-    "INSERT INTO admin_sessions (token, expires_at) VALUES (?, ?)",
-  )
-    .bind(token, expires)
-    .run();
-  context.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    path: "/",
-    maxAge: SESSION_HOURS * 3600,
-  });
+function toBase64Url(bytes: Uint8Array) {
+	let binary = "";
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary)
+		.replaceAll("+", "-")
+		.replaceAll("/", "_")
+		.replaceAll("=", "");
 }
 
-export async function isAdmin(context: APIContext) {
-  const token = context.cookies.get(COOKIE_NAME)?.value;
-  if (!token) return false;
-  const row = await env.DB.prepare(
-    "SELECT token FROM admin_sessions WHERE token = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')",
-  )
-    .bind(token)
-    .first();
-  return Boolean(row);
+function fromBase64Url(value: string) {
+	const base64 = value
+		.replaceAll("-", "+")
+		.replaceAll("_", "/")
+		.padEnd(Math.ceil(value.length / 4) * 4, "=");
+	const binary = atob(base64);
+	return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
-export async function requireAdmin(context: APIContext) {
-  if (await isAdmin(context)) return null;
-  return new Response(JSON.stringify({ error: "unauthorized" }), {
-    status: 401,
-    headers: { "content-type": "application/json" },
-  });
+async function getSigningKey() {
+	return crypto.subtle.importKey(
+		"raw",
+		encoder.encode(env.LOGIN_PASSWORD),
+		{ name: "HMAC", hash: "SHA-256" },
+		false,
+		["sign", "verify"],
+	);
 }
 
-export async function destroyAdminSession(context: APIContext) {
-  const token = context.cookies.get(COOKIE_NAME)?.value;
-  if (token) {
-    await env.DB.prepare("DELETE FROM admin_sessions WHERE token = ?")
-      .bind(token)
-      .run();
-  }
-  context.cookies.delete(COOKIE_NAME, { path: "/" });
+async function sign(value: string) {
+	const signature = await crypto.subtle.sign(
+		"HMAC",
+		await getSigningKey(),
+		encoder.encode(value),
+	);
+	return toBase64Url(new Uint8Array(signature));
+}
+
+export async function createSession(context: APIContext) {
+	const expiresAt = Date.now() + SESSION_HOURS * 3600_000;
+	const payload = `${expiresAt}.${crypto.randomUUID()}`;
+	const signature = await sign(payload);
+	context.cookies.set(COOKIE_NAME, `${payload}.${signature}`, {
+		httpOnly: true,
+		secure: true,
+		sameSite: "strict",
+		path: "/",
+		maxAge: SESSION_HOURS * 3600,
+	});
+}
+
+export async function isAuthenticated(context: APIContext) {
+	const value = context.cookies.get(COOKIE_NAME)?.value;
+	if (!value) return false;
+	const [expiresAtText, token, signature, ...rest] = value.split(".");
+	const expiresAt = Number(expiresAtText);
+	if (
+		!token ||
+		!signature ||
+		rest.length ||
+		!Number.isSafeInteger(expiresAt) ||
+		expiresAt <= Date.now()
+	) {
+		return false;
+	}
+	try {
+		return crypto.subtle.verify(
+			"HMAC",
+			await getSigningKey(),
+			fromBase64Url(signature),
+			encoder.encode(`${expiresAtText}.${token}`),
+		);
+	} catch {
+		return false;
+	}
+}
+
+export async function requireAuthentication(context: APIContext) {
+	if (await isAuthenticated(context)) return null;
+	return new Response(JSON.stringify({ error: "unauthorized" }), {
+		status: 401,
+		headers: { "content-type": "application/json" },
+	});
+}
+
+export async function destroySession(context: APIContext) {
+	context.cookies.delete(COOKIE_NAME, { path: "/" });
 }

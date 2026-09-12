@@ -16,10 +16,10 @@ The project separates field sensing from Internet access: the Rover acquires GNS
 The current repository targets Rev.1 field testing and includes:
 
 - Rover firmware for GNSS parsing, local JSONL backup, physical-button controls, LED status, ESP-NOW telemetry, measurements, sessions, and RTCM forwarding to the receiver.
-- Gateway firmware for ESP-NOW, three saved Wi-Fi networks, NTP-aligned 10-second telemetry, local JSONL backup, Cloudflare API synchronization, retry handling, command polling, and optional NTRIP.
+- Gateway firmware for ESP-NOW, three saved Wi-Fi networks, one-minute live-status updates while connected to a Rover with a valid GNSS fix, local JSONL backup for durable records, Cloudflare API synchronization, retry handling, command polling, and optional NTRIP.
 - Astro + TypeScript + Tailwind CSS v4 Web UI deployed as one Cloudflare Worker with D1.
 - Public read-only live/history views and authenticated control operations.
-- Session, measurement, event, telemetry, device, command, and debug records with end-to-end unique IDs.
+- Session, measurement, event, device, command, and debug records with end-to-end unique IDs, plus one current live-status record per Gateway.
 
 NTRIP is optional. The system continues to collect and synchronize standard GNSS data when no NTRIP service is configured or available.
 
@@ -51,13 +51,13 @@ Web UI
 
 Rev.1 wiring used by the firmware defaults:
 
-| Signal | ESP32-S3-Zero |
-| --- | --- |
-| GNSS TX -> MCU RX | GPIO44 |
-| MCU TX -> GNSS RX | GPIO43 |
-| PPS | GPIO1 |
-| External measurement button | GPIO2 |
-| On-board WS2812 | GPIO21 |
+| Signal                      | ESP32-S3-Zero |
+| --------------------------- | ------------- |
+| GNSS TX -> MCU RX           | GPIO44        |
+| MCU TX -> GNSS RX           | GPIO43        |
+| PPS                         | GPIO1         |
+| External measurement button | GPIO2         |
+| On-board WS2812             | GPIO21        |
 
 The GPIO2 button is an add-on for field testing and is not part of the current Rev.1 PCB routing.
 
@@ -77,10 +77,10 @@ hardware/
 
 ## Controls
 
-| Input | Action |
-| --- | --- |
-| Single click | Save a measurement point |
-| Double click | Start or stop a test session |
+| Input               | Action                          |
+| ------------------- | ------------------------------- |
+| Single click        | Save a measurement point        |
+| Double click        | Start or stop a test session    |
 | Long press (~1.8 s) | Cancel the previous measurement |
 
 A named measurement can be armed from the Web UI. The Rover LED turns blue until the physical button saves that point.
@@ -110,17 +110,17 @@ The Web UI intentionally uses a compact field-console design: high information d
 
 Run Web commands from `web/`.
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Start local Astro development |
-| `pnpm build` | Build the Cloudflare Worker application |
-| `pnpm check` | Run Astro and TypeScript checks |
-| `pnpm format` | Format Web sources |
-| `pnpm format:check` | Check formatting |
-| `pnpm lint:tailwind` | Fix Tailwind utility issues |
-| `pnpm lint:tailwind:check` | Check Tailwind utility usage |
-| `pnpm lines:check` | Check the 500-line source-file guideline |
-| `pnpm deploy` | Deploy with Wrangler |
+| Command                    | Description                              |
+| -------------------------- | ---------------------------------------- |
+| `pnpm dev`                 | Start local Astro development            |
+| `pnpm build`               | Build the Cloudflare Worker application  |
+| `pnpm check`               | Run Astro and TypeScript checks          |
+| `pnpm format`              | Format Web sources                       |
+| `pnpm format:check`        | Check formatting                         |
+| `pnpm lint:tailwind`       | Fix Tailwind utility issues              |
+| `pnpm lint:tailwind:check` | Check Tailwind utility usage             |
+| `pnpm lines:check`         | Check the 500-line source-file guideline |
+| `pnpm deploy`              | Deploy with Wrangler                     |
 
 Firmware can be built from each PlatformIO project:
 
@@ -153,6 +153,7 @@ Authenticated Web control:
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `POST /api/session`
+- `DELETE /api/session/:id`
 - `POST /api/measurement/arm`
 - `PATCH /api/measurement/:id`
 
@@ -173,7 +174,7 @@ Cloudflare secrets should be set with Wrangler, for example:
 
 ```bash
 pnpm exec wrangler secret put DEVICE_API_TOKEN
-pnpm exec wrangler secret put ADMIN_PASSWORD
+pnpm exec wrangler secret put LOGIN_PASSWORD
 ```
 
 ## D1 Migrations

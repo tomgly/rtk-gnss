@@ -1,25 +1,266 @@
 ---
 import { env } from "cloudflare:workers";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { isAdmin } from "../../lib/auth";
-const admin = await isAdmin(Astro);
+import { isAuthenticated } from "../../lib/auth";
+
+const authenticated = await isAuthenticated(Astro);
 const db = env.DB;
-const sessions = await db.prepare("SELECT * FROM sessions ORDER BY created_at DESC LIMIT 50").all<any>();
-const measurements = await db.prepare("SELECT * FROM measurements ORDER BY gateway_time DESC LIMIT 200").all<any>();
-const fixLabel = (fix?: number) => fix === 4 ? "RTK FIXED" : fix === 5 ? "RTK FLOAT" : fix === 2 ? "DIFF" : fix === 1 ? "SINGLE" : "NO FIX";
+const PAGE_SIZE = 5;
+const pageFrom = (key: string) => {
+	const value = Number(Astro.url.searchParams.get(key));
+	return Number.isSafeInteger(value) && value > 0 ? value : 1;
+};
+const pageUrl = (key: string, page: number) => {
+	const params = new URLSearchParams(Astro.url.searchParams);
+	if (page === 1) params.delete(key);
+	else params.set(key, String(page));
+	const query = params.toString();
+	return query ? `?${query}` : "/history";
+};
+const sessionPage = pageFrom("sessions_page");
+const measurementPage = pageFrom("measurements_page");
+const sessions = await db
+	.prepare("SELECT * FROM sessions ORDER BY created_at DESC LIMIT ? OFFSET ?")
+	.bind(PAGE_SIZE + 1, (sessionPage - 1) * PAGE_SIZE)
+	.all<any>();
+const measurements = await db
+	.prepare(
+		"SELECT * FROM measurements ORDER BY gateway_time DESC LIMIT ? OFFSET ?",
+	)
+	.bind(PAGE_SIZE + 1, (measurementPage - 1) * PAGE_SIZE)
+	.all<any>();
+const sessionResultRows = sessions.results ?? [];
+const measurementResultRows = measurements.results ?? [];
+const sessionRows = sessionResultRows.slice(0, PAGE_SIZE);
+const measurementRows = measurementResultRows.slice(0, PAGE_SIZE);
+const hasNextSessionPage = sessionResultRows.length > PAGE_SIZE;
+const hasNextMeasurementPage = measurementResultRows.length > PAGE_SIZE;
+const fixLabel = (fix?: number) =>
+	fix === 4
+		? "RTK FIXED"
+		: fix === 5
+			? "RTK FLOAT"
+			: fix === 2
+				? "DIFF"
+				: fix === 1
+					? "SINGLE"
+					: "NO FIX";
 ---
-<BaseLayout title="History · RTK-GNSS" admin={admin}>
-  <div class="mb-4"><div class="section-title">Recorded data</div><h1 class="mt-1 text-2xl font-semibold">History</h1></div>
-  <section class="panel mb-4">
-    <div class="px-4 py-3 section-title">Sessions</div>
-    <div class="table-wrap"><table><thead><tr><th>Name</th><th>Started</th><th>Ended</th><th>Status</th><th>ID</th></tr></thead><tbody>
-      {(sessions.results ?? []).map((s:any) => <tr><td>{s.name}</td><td class="mono">{s.started_at ?? "—"}</td><td class="mono">{s.ended_at ?? "—"}</td><td>{s.active ? "Active" : "Closed"}</td><td class="mono text-xs">{s.session_id}</td></tr>)}
-    </tbody></table></div>
-  </section>
-  <section class="panel">
-    <div class="px-4 py-3 section-title">Measurements</div>
-    <div class="table-wrap"><table><thead><tr><th>UTC</th><th>Name</th><th>Fix</th><th>Latitude</th><th>Longitude</th><th>HDOP</th><th>RSSI</th><th>ID</th></tr></thead><tbody>
-      {(measurements.results ?? []).map((m:any) => <tr class:list={[m.cancelled && "opacity-45 line-through"]}><td class="mono">{m.gateway_time}</td><td>{m.name}</td><td>{fixLabel(m.fix)}</td><td class="mono">{m.lat?.toFixed?.(9)}</td><td class="mono">{m.lon?.toFixed?.(9)}</td><td class="mono">{m.hdop ?? "—"}</td><td class="mono">{m.espnow_rssi ?? "—"}</td><td class="mono text-xs">{m.measurement_id}</td></tr>)}
-    </tbody></table></div>
-  </section>
+
+<BaseLayout title="History · RTK-GNSS" authenticated={authenticated}>
+	<h1 class="mb-4 text-2xl font-semibold tracking-tight">History</h1>
+	<section class="panel mb-4">
+		<div class="flex items-center justify-between px-4 py-3">
+			<div class="section-title">Sessions</div>
+			<nav class="grid grid-cols-2 gap-4 text-sm">
+				{sessionPage > 1 ? (
+							<a class="pager-link" href={pageUrl("sessions_page", sessionPage - 1)}>
+								Previous
+							</a>
+						) : (
+							<span class="pager-link pager-link-disabled">Previous</span>
+						)}
+						{hasNextSessionPage ? (
+							<a class="pager-link" href={pageUrl("sessions_page", sessionPage + 1)}>
+								Next
+							</a>
+						) : (
+							<span class="pager-link pager-link-disabled">Next</span>
+						)}
+			</nav>
+		</div>
+		{
+			sessionRows.length ? (
+				<div class="table-wrap">
+					<table class="mobile-stack-table">
+						<>
+							<thead>
+								<tr>
+									<>
+										<th>Name</th>
+										<th>Started</th>
+										<th>Ended</th>
+										<th>Status</th>
+										<th>ID</th>
+										<th aria-label="Actions" />
+									</>
+								</tr>
+							</thead>
+							<tbody>
+								{sessionRows.map((s: any) => (
+									<tr>
+										<>
+											<td data-label="Name">{s.name}</td>
+											<td data-label="Started" class="mono">
+												{s.started_at ?? "—"}
+											</td>
+											<td data-label="Ended" class="mono">
+												{s.ended_at ?? "—"}
+											</td>
+											<td data-label="Status">
+												{s.active ? "Active" : "Closed"}
+											</td>
+											<td data-label="ID" class="mono text-xs">
+												{s.session_id}
+											</td>
+											<td class="session-actions" data-label="Actions">
+												<button
+													class="btn btn-danger btn-small session-delete"
+													data-session-id={s.session_id}
+													data-session-name={s.name}
+													type="button"
+												>
+													Delete
+												</button>
+											</td>
+										</>
+									</tr>
+								))}
+							</tbody>
+						</>
+					</table>
+				</div>
+			) : (
+				<p class="px-4 py-5 text-sm text-gray-500">No data.</p>
+			)
+		}
+	</section>
+	<section class="panel">
+		<div class="flex items-center justify-between px-4 py-3">
+			<div class="section-title">Measurements</div>
+			<nav class="grid grid-cols-2 gap-4 text-sm">
+				{measurementPage > 1 ? (
+							<a
+								class="pager-link"
+								href={pageUrl("measurements_page", measurementPage - 1)}
+							>
+								Previous
+							</a>
+						) : (
+							<span class="pager-link pager-link-disabled">Previous</span>
+						)}
+						{hasNextMeasurementPage ? (
+							<a
+								class="pager-link"
+								href={pageUrl("measurements_page", measurementPage + 1)}
+							>
+								Next
+							</a>
+						) : (
+							<span class="pager-link pager-link-disabled">Next</span>
+						)}
+			</nav>
+		</div>
+		{
+			measurementRows.length ? (
+				<div class="table-wrap">
+					<table class="mobile-stack-table">
+						<>
+							<thead>
+								<tr>
+									<>
+										<th>UTC</th>
+										<th>Name</th>
+										<th>Fix</th>
+										<th>Latitude</th>
+										<th>Longitude</th>
+										<th>HDOP</th>
+										<th>RSSI</th>
+										<th>ID</th>
+									</>
+								</tr>
+							</thead>
+							<tbody>
+								{measurementRows.map((m: any) => (
+									<tr class:list={[m.cancelled && "opacity-45 line-through"]}>
+										<>
+											<td data-label="UTC" class="mono">
+												{m.gateway_time}
+											</td>
+											<td data-label="Name">{m.name}</td>
+											<td data-label="Fix">{fixLabel(m.fix)}</td>
+											<td data-label="Latitude" class="mono">
+												{m.lat?.toFixed?.(9)}
+											</td>
+											<td data-label="Longitude" class="mono">
+												{m.lon?.toFixed?.(9)}
+											</td>
+											<td data-label="HDOP" class="mono">
+												{m.hdop ?? "—"}
+											</td>
+											<td data-label="RSSI" class="mono">
+												{m.espnow_rssi ?? "—"}
+											</td>
+											<td data-label="ID" class="mono text-xs">
+												{m.measurement_id}
+											</td>
+										</>
+									</tr>
+								))}
+							</tbody>
+						</>
+					</table>
+				</div>
+			) : (
+				<p class="px-4 py-5 text-sm text-gray-500">No data.</p>
+			)
+		}
+	</section>
+	<dialog id="delete-session-dialog" class="delete-dialog">
+		<div class="panel p-4">
+			<h2 class="text-lg font-semibold">Delete session?</h2>
+			<p id="delete-session-description" class="mt-2 text-sm text-gray-600"></p>
+			<div class="mt-4 flex justify-end gap-2">
+				<button
+					id="confirm-delete-session"
+					class="btn btn-danger confirmation-button"
+					type="button"
+				>
+					Delete
+				</button>
+				<button
+					id="cancel-delete-session"
+					class="btn btn-secondary confirmation-button"
+					type="button"
+				>
+					Cancel
+				</button>
+			</div>
+		</div>
+	</dialog>
+	<script>
+		const dialog = document.querySelector("#delete-session-dialog");
+		const description = document.querySelector("#delete-session-description");
+		const confirmButton = document.querySelector("#confirm-delete-session");
+		let sessionId = "";
+
+		document.querySelectorAll(".session-delete").forEach((button) => {
+			button.addEventListener("click", () => {
+				sessionId = button.dataset.sessionId || "";
+				if (description)
+					description.textContent = `Delete ${button.dataset.sessionName || "this session"} and its measurements and events? This cannot be undone.`;
+				dialog?.showModal();
+			});
+		});
+		document
+			.querySelector("#cancel-delete-session")
+			?.addEventListener("click", () => dialog?.close());
+		dialog?.addEventListener("click", (event) => {
+			if (event.target === dialog) dialog.close();
+		});
+		confirmButton?.addEventListener("click", async () => {
+			if (!sessionId) return;
+			confirmButton.disabled = true;
+			confirmButton.textContent = "Deleting…";
+			const response = await fetch(`/api/session/${sessionId}`, {
+				method: "DELETE",
+			});
+			if (response.ok) {
+				window.location.reload();
+				return;
+			}
+			confirmButton.disabled = false;
+			confirmButton.textContent = "Delete";
+		});
+	</script>
 </BaseLayout>

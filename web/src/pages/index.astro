@@ -1,125 +1,420 @@
 ---
 import { env } from "cloudflare:workers";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import LedReference from "../components/LedReference.astro";
-import { isAdmin } from "../lib/auth";
+import { isAuthenticated } from "../lib/auth";
 
-const admin = await isAdmin(Astro);
+const authenticated = await isAuthenticated(Astro);
 const db = env.DB;
-const telemetry = await db.prepare("SELECT * FROM telemetry ORDER BY gateway_time DESC LIMIT 1").first<any>();
-const measurements = await db.prepare("SELECT * FROM measurements ORDER BY gateway_time DESC LIMIT 8").all<any>();
-const activeSession = await db.prepare("SELECT * FROM sessions WHERE active=1 ORDER BY started_at DESC LIMIT 1").first<any>();
+const telemetry = await db
+	.prepare(
+		"SELECT * FROM telemetry WHERE record_id LIKE 'live:%' ORDER BY gateway_time DESC LIMIT 1",
+	)
+	.first<any>();
+const LIVE_STATUS_MAX_AGE_MS = 120_000;
+const isCurrentLiveStatus = (status: any) => {
+	const updatedAt = Date.parse(status?.gateway_time ?? "");
+	return (
+		Number.isFinite(updatedAt) &&
+		updatedAt <= Date.now() &&
+		Date.now() - updatedAt <= LIVE_STATUS_MAX_AGE_MS
+	);
+};
+const liveStatusCurrent = isCurrentLiveStatus(telemetry);
+const currentTelemetry = liveStatusCurrent ? telemetry : null;
+const activeSession = await db
+	.prepare(
+		"SELECT * FROM sessions WHERE active=1 ORDER BY started_at DESC LIMIT 1",
+	)
+	.first<any>();
 
-const fixLabel = (fix?: number) => fix === 4 ? "RTK FIXED" : fix === 5 ? "RTK FLOAT" : fix === 2 ? "DIFFERENTIAL" : fix === 1 ? "SINGLE" : "NO FIX";
+const fixLabel = (fix?: number) =>
+	fix === 4
+		? "RTK FIXED"
+		: fix === 5
+			? "RTK FLOAT"
+			: fix === 2
+				? "DIFFERENTIAL"
+				: fix === 1
+					? "SINGLE"
+					: "NO FIX";
+const fixState = (fix?: number) =>
+	fix === 4
+		? "fixed"
+		: fix === 5
+			? "float"
+			: fix === 2
+				? "differential"
+				: fix === 1
+					? "single"
+					: "offline";
 ---
-<BaseLayout title="Live · RTK-GNSS" admin={admin}>
-  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <div class="section-title">Field console</div>
-      <h1 class="mt-1 text-2xl font-semibold">Live</h1>
-    </div>
-    <div id="live-state" class="flex items-center gap-2 text-sm text-green-700"><span class="status-dot"></span> Live</div>
-  </div>
 
-  <section class="panel mb-4 grid divide-y divide-gray-200 md:grid-cols-4 md:divide-x md:divide-y-0">
-    <div class="p-4"><div class="section-title">Session</div><div id="session-name" class="mt-2 font-semibold">{activeSession?.name ?? "No active session"}</div><div id="session-id" class="mono mt-1 truncate text-xs text-gray-500">{activeSession?.session_id ?? "—"}</div></div>
-    <div class="p-4"><div class="section-title">GNSS</div><div id="fix" class="mt-2 text-lg font-semibold">{fixLabel(telemetry?.fix)}</div><div class="mt-1 text-sm text-gray-500"><span id="sats">{telemetry?.satellites ?? "—"}</span> sats · HDOP <span id="hdop">{telemetry?.hdop ?? "—"}</span></div></div>
-    <div class="p-4"><div class="section-title">ESP-NOW</div><div class="mono mt-2 text-lg font-semibold"><span id="esp-rssi">{telemetry?.espnow_rssi ?? "—"}</span> dBm</div><div class="mt-1 text-sm text-gray-500">Lost <span id="lost">{telemetry?.packets_lost ?? "—"}</span></div></div>
-    <div class="p-4"><div class="section-title">Gateway</div><div class="mt-2 text-lg font-semibold"><span id="wifi-rssi">{telemetry?.wifi_rssi ?? "—"}</span> dBm</div><div id="wifi-ssid" class="mt-1 truncate text-sm text-gray-500">{telemetry?.wifi_ssid ?? "Offline"}</div></div>
-  </section>
+<BaseLayout title="Live · RTK-GNSS" authenticated={authenticated}>
+	<div class="mb-4 flex items-center justify-between gap-3">
+		<h1 class="text-2xl font-semibold tracking-tight">Live</h1>
+		<div class="flex flex-wrap justify-end gap-2">
+			<div
+				id="gateway-state"
+				class="status-badge"
+				data-state={liveStatusCurrent ? "connected" : "offline"}
+			>
+				<span class="status-dot"></span><span id="gateway-state-label"
+					>{liveStatusCurrent ? "Gateway online" : "Gateway offline"}</span
+				>
+			</div>
+			<div
+				id="rover-state"
+				class="status-badge"
+				data-state={currentTelemetry?.fix ? "connected" : "offline"}
+			>
+				<span class="status-dot"></span><span id="rover-state-label"
+					>{currentTelemetry?.fix ? "Rover online" : "Rover offline"}</span
+				>
+			</div>
+		</div>
+	</div>
 
-  <div class="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
-    <div class="space-y-4">
-      <section class="panel p-4">
-        <div class="section-title">Position</div>
-        <div class="mt-3 grid gap-3 sm:grid-cols-3">
-          <div><div class="text-xs text-gray-500">Latitude</div><div id="lat" class="mono mt-1 text-lg">{telemetry?.lat?.toFixed?.(9) ?? "—"}</div></div>
-          <div><div class="text-xs text-gray-500">Longitude</div><div id="lon" class="mono mt-1 text-lg">{telemetry?.lon?.toFixed?.(9) ?? "—"}</div></div>
-          <div><div class="text-xs text-gray-500">Altitude</div><div class="mono mt-1 text-lg"><span id="alt">{telemetry?.alt_m?.toFixed?.(3) ?? "—"}</span> m</div></div>
-        </div>
-        <div class="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-t border-gray-200 pt-3 text-sm text-gray-600">
-          <span>Speed <b id="speed" class="mono font-medium text-gray-900">{telemetry?.speed_mps?.toFixed?.(2) ?? "—"}</b> m/s</span>
-          <span>Course <b id="course" class="mono font-medium text-gray-900">{telemetry?.course_deg?.toFixed?.(1) ?? "—"}</b>°</span>
-          <span>GNSS <b id="gnss-time" class="mono font-medium text-gray-900">{telemetry?.gnss_time ?? "—"}</b></span>
-        </div>
-      </section>
+	<section
+		id="gnss-status"
+		class="status-hero mb-4"
+		data-state={fixState(currentTelemetry?.fix)}
+	>
+		<div>
+			<div class="section-title text-inherit opacity-75">GNSS solution</div>
+			<div id="fix" class="mt-1 text-2xl font-semibold tracking-tight">
+				{fixLabel(currentTelemetry?.fix)}
+			</div>
+		</div>
+		<div class="status-hero-meta">
+			<div>
+				<span class="status-hero-label">Satellites</span><strong id="sats"
+					>{currentTelemetry?.satellites ?? "—"}</strong
+				>
+			</div>
+			<div>
+				<span class="status-hero-label">HDOP</span><strong id="hdop"
+					>{currentTelemetry?.hdop ?? "—"}</strong
+				>
+			</div>
+		</div>
+	</section>
 
-      <section class="panel p-4">
-        <div class="flex items-center justify-between gap-3"><div class="section-title">Next measurement</div><span id="arm-state" class="text-xs text-gray-500">Not armed</span></div>
-        {admin ? (
-          <form id="arm-form" class="mt-3 flex gap-2">
-            <input id="measurement-name" class="min-w-0 flex-1" maxlength="47" placeholder="Fence NW Corner" required />
-            <button class="btn" type="submit">Arm Rover</button>
-          </form>
-        ) : (
-          <p class="mt-3 text-sm text-gray-600">Sign in as admin to arm a named measurement.</p>
-        )}
-        <p class="mt-2 text-xs text-gray-500">When armed, the Rover LED turns blue. Press the physical button at the point to save it.</p>
-      </section>
+	<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+		<section class="status-card">
+			<div class="section-title">Position</div>
+			<div class="mt-3 grid gap-2">
+				<div>
+					<span class="metric-label">Latitude</span><strong
+						id="lat"
+						class="mono metric-value"
+						>{currentTelemetry?.lat?.toFixed?.(7) ?? "—"}</strong
+					>
+				</div>
+				<div>
+					<span class="metric-label">Longitude</span><strong
+						id="lon"
+						class="mono metric-value"
+						>{currentTelemetry?.lon?.toFixed?.(7) ?? "—"}</strong
+					>
+				</div>
+			</div>
+			<div class="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-900">
+				<span class="text-gray-500">Altitude</span>
+				<strong class="mono"
+					><span id="alt">{currentTelemetry?.alt_m?.toFixed?.(2) ?? "—"}</span> m</strong
+				>
+			</div>
+		</section>
 
-      <section class="panel">
-        <div class="flex items-center justify-between px-4 py-3"><div class="section-title">Recent measurements</div><a href="/history" class="text-xs font-medium text-gray-600">View history →</a></div>
-        <div class="table-wrap"><table><thead><tr><th>Time</th><th>Name</th><th>Fix</th><th>HDOP</th><th>RSSI</th></tr></thead><tbody id="measurements-body">
-          {(measurements.results ?? []).map((m:any) => <tr class:list={[m.cancelled && "opacity-45 line-through"]}><td class="mono">{m.gateway_time?.slice(11,19)}</td><td>{m.name}</td><td>{fixLabel(m.fix)}</td><td class="mono">{m.hdop ?? "—"}</td><td class="mono">{m.espnow_rssi ?? "—"}</td></tr>)}
-        </tbody></table></div>
-      </section>
-    </div>
+		<section class="status-card">
+			<div class="section-title">Rover link</div>
+			<div class="mt-3">
+				<span class="metric-label">ESP-NOW RSSI</span><strong
+					class="mono metric-value"
+					><span id="esp-rssi">{currentTelemetry?.espnow_rssi ?? "—"}</span> dBm</strong
+				>
+			</div>
+			<div class="mt-3 border-t border-gray-200 pt-3 text-sm text-gray-900">
+				<span class="text-gray-500">Lost packets</span>
+				<strong id="lost" class="mono"
+					>{currentTelemetry?.packets_lost ?? "—"}</strong
+				>
+			</div>
+		</section>
 
-    <aside class="space-y-4">
-      <section class="panel p-4">
-        <div class="section-title">Session control</div>
-        {admin ? (
-          <div class="mt-3 space-y-2">
-            <input id="session-name-input" class="w-full" placeholder="Farm field test" />
-            <div class="flex gap-2"><button id="start-session" class="btn flex-1">Start</button><button id="stop-session" class="btn btn-secondary flex-1">Stop</button></div>
-          </div>
-        ) : <p class="mt-3 text-sm text-gray-600">Admin sign-in required.</p>}
-      </section>
-      <section class="panel p-4">
-        <div class="section-title">RTK / Network</div>
-        <dl class="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
-          <dt class="text-gray-500">NTRIP</dt><dd id="ntrip">{telemetry?.ntrip_enabled ? (telemetry?.ntrip_connected ? "Connected" : "Unavailable") : "Disabled"}</dd>
-          <dt class="text-gray-500">RTCM age</dt><dd class="mono"><span id="rtcm-age">{telemetry?.rtcm_age_ms ?? "—"}</span> ms</dd>
-          <dt class="text-gray-500">RTCM bytes</dt><dd id="rtcm-bytes" class="mono">{telemetry?.rtcm_bytes ?? "—"}</dd>
-          <dt class="text-gray-500">Packets</dt><dd id="packets" class="mono">{telemetry?.packets_received ?? "—"}</dd>
-        </dl>
-      </section>
-      <section class="panel p-4"><div class="section-title mb-4">LED reference</div><LedReference /></section>
-    </aside>
-  </div>
+		<section class="status-card">
+			<div class="section-title">Gateway</div>
+			<div class="mt-3">
+				<span class="metric-label">Wi-Fi RSSI</span><strong
+					class="mono metric-value"
+					><span id="wifi-rssi">{currentTelemetry?.wifi_rssi ?? "—"}</span> dBm</strong
+				>
+			</div>
+			<div
+				id="wifi-ssid"
+				class="mt-3 truncate border-t border-gray-200 pt-3 text-sm font-medium text-gray-900"
+			>
+				{currentTelemetry?.wifi_ssid ?? "Offline"}
+			</div>
+		</section>
+	</div>
 
-  <script is:inline define:vars={{ admin }}>
-    const fixLabel = (fix) => fix === 4 ? "RTK FIXED" : fix === 5 ? "RTK FLOAT" : fix === 2 ? "DIFFERENTIAL" : fix === 1 ? "SINGLE" : "NO FIX";
-    const txt = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value ?? "—"; };
-    const num = (v, digits) => typeof v === "number" ? v.toFixed(digits) : "—";
-    async function refresh() {
-      try {
-        const data = await fetch("/api/public/live", { cache: "no-store" }).then(r => r.json());
-        const t = data.telemetry || {};
-        txt("fix", fixLabel(t.fix)); txt("sats", t.satellites); txt("hdop", t.hdop); txt("esp-rssi", t.espnow_rssi); txt("lost", t.packets_lost);
-        txt("wifi-rssi", t.wifi_rssi); txt("wifi-ssid", t.wifi_ssid || "Offline"); txt("lat", num(t.lat,9)); txt("lon", num(t.lon,9)); txt("alt", num(t.alt_m,3));
-        txt("speed", num(t.speed_mps,2)); txt("course", num(t.course_deg,1)); txt("gnss-time", t.gnss_time); txt("packets", t.packets_received);
-        txt("ntrip", t.ntrip_enabled ? (t.ntrip_connected ? "Connected" : "Unavailable") : "Disabled"); txt("rtcm-age", t.rtcm_age_ms); txt("rtcm-bytes", t.rtcm_bytes);
-        txt("session-name", data.activeSession?.name || "No active session"); txt("session-id", data.activeSession?.session_id || "—");
-      } catch { txt("live-state", "Offline"); }
-    }
-    setInterval(refresh, 2000);
+	<section class="panel mt-4 p-4">
+		<div class="flex items-center justify-between gap-3">
+			<div>
+				<div class="section-title">Active session</div><div
+					id="session-name"
+					class="mt-1 font-semibold"
+				>
+					{activeSession?.name ?? "No active session"}
+				</div>
+			</div>
+			<a
+				href="/history"
+				class="text-sm font-semibold text-blue-700 transition-colors hover:text-blue-900"
+				>History →</a
+			>
+		</div>
+		<div id="session-id" class="mono mt-2 truncate text-xs text-gray-500">
+			{activeSession?.session_id ?? "Start a session from controls"}
+		</div>
+	</section>
 
-    if (admin) {
-      document.getElementById("arm-form")?.addEventListener("submit", async (e) => {
-        e.preventDefault(); const input = document.getElementById("measurement-name"); const name = input?.value.trim(); if (!name) return;
-        const r = await fetch("/api/measurement/arm", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({name}) });
-        if (r.ok) { txt("arm-state", `Armed: ${name}`); input.value = ""; }
-      });
-      document.getElementById("start-session")?.addEventListener("click", async () => {
-        const name = document.getElementById("session-name-input")?.value.trim();
-        const r = await fetch("/api/session", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({action:"start", name}) });
-        if (r.ok) refresh();
-      });
-      document.getElementById("stop-session")?.addEventListener("click", async () => {
-        const r = await fetch("/api/session", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({action:"stop"}) });
-        if (r.ok) refresh();
-      });
-    }
-  </script>
+	<details id="controls" class="control-drawer mt-4" open>
+		<summary class="section-title">Measurement and session controls</summary>
+		<div class="grid gap-4 border-t border-gray-200 p-4 lg:grid-cols-2">
+			<section>
+				<div class="section-title">Next measurement</div>
+				{
+					authenticated ? (
+						<form id="arm-form" class="mt-3 flex flex-col gap-2 sm:flex-row">
+							<input
+								id="measurement-name"
+								class="min-w-0 flex-1"
+								maxlength="47"
+								placeholder="Fence NW Corner"
+								required
+							/>
+								<button class="btn control-action-button" type="submit">
+								Arm Rover
+							</button>
+						</form>
+					) : (
+						<p class="mt-3 text-sm text-gray-600">
+							Log in to arm a named measurement.
+						</p>
+					)
+				}
+				<p id="arm-state" class="mt-2 text-xs text-gray-500">Not armed</p>
+			</section>
+			<section>
+				<div class="section-title">Session control</div>
+				{
+					authenticated ? (
+						<>
+							<div class="mt-3 flex flex-col gap-2 sm:flex-row">
+								<input
+									id="session-name-input"
+									class="min-w-0 flex-1"
+									placeholder="Farm field test"
+								/>
+								<button
+									id="start-session"
+									class="btn control-action-button"
+									hidden={Boolean(activeSession)}
+								>
+									<span id="start-session-label">Start</span>
+								</button>
+								<button
+									id="stop-session"
+									class="btn btn-secondary control-action-button"
+									hidden={!activeSession}
+								>
+									<span id="stop-session-label">Stop</span>
+								</button>
+							</div>
+							<p id="session-state" class="mt-2 text-xs text-gray-500">
+								{activeSession ? "Session active" : "No active session"}
+							</p>
+						</>
+					) : (
+						<p class="mt-3 text-sm text-gray-600">Log in required.</p>
+					)
+				}
+			</section>
+		</div>
+	</details>
+
+	<script is:inline define:vars={{ authenticated }}>
+		const fixLabel = (fix) =>
+			fix === 4
+				? "RTK FIXED"
+				: fix === 5
+					? "RTK FLOAT"
+					: fix === 2
+						? "DIFFERENTIAL"
+						: fix === 1
+							? "SINGLE"
+							: "NO FIX";
+		const fixState = (fix) =>
+			fix === 4
+				? "fixed"
+				: fix === 5
+					? "float"
+					: fix === 2
+						? "differential"
+						: fix === 1
+							? "single"
+							: "offline";
+		const txt = (id, value) => {
+			const el = document.getElementById(id);
+			if (el) el.textContent = value ?? "—";
+		};
+		const num = (v, digits) =>
+			typeof v === "number" ? v.toFixed(digits) : "—";
+		const setState = (id, state) =>
+			document.getElementById(id)?.setAttribute("data-state", state);
+		const updateSession = (session) => {
+			const active = Boolean(session?.session_id);
+			txt("session-name", session?.name || "No active session");
+			txt("session-id", session?.session_id || "Start a session from controls");
+			txt("session-state", active ? "Session active" : "No active session");
+			const start = document.getElementById("start-session");
+			const stop = document.getElementById("stop-session");
+			if (start) {
+				start.hidden = active;
+				start.disabled = false;
+			}
+			txt("start-session-label", "Start");
+			if (stop) {
+				stop.hidden = !active;
+				stop.disabled = false;
+			}
+			txt("stop-session-label", "Stop");
+		};
+		const isCurrentLiveStatus = (status) => {
+			const updatedAt = Date.parse(status?.gateway_time || "");
+			return (
+				Number.isFinite(updatedAt) &&
+				updatedAt <= Date.now() &&
+				Date.now() - updatedAt <= 120000
+			);
+		};
+		const updateOnlineState = (status) => {
+			const gatewayOnline = isCurrentLiveStatus(status);
+			const roverOnline = gatewayOnline && Number(status?.fix) > 0;
+			txt(
+				"gateway-state-label",
+				gatewayOnline ? "Gateway online" : "Gateway offline",
+			);
+			txt("rover-state-label", roverOnline ? "Rover online" : "Rover offline");
+			setState("gateway-state", gatewayOnline ? "connected" : "offline");
+			setState("rover-state", roverOnline ? "connected" : "offline");
+			return gatewayOnline ? status : {};
+		};
+		async function refresh() {
+			try {
+				const response = await fetch("/api/public/live", { cache: "no-store" });
+				if (!response.ok) throw new Error("Live request failed");
+				const data = await response.json();
+				const t = updateOnlineState(data.telemetry);
+				txt("fix", fixLabel(t.fix));
+				setState("gnss-status", fixState(t.fix));
+				txt("sats", t.satellites);
+				txt("hdop", t.hdop);
+				txt("esp-rssi", t.espnow_rssi);
+				txt("lost", t.packets_lost);
+				txt("wifi-rssi", t.wifi_rssi);
+				txt("wifi-ssid", t.wifi_ssid || "Offline");
+				txt("lat", num(t.lat, 7));
+				txt("lon", num(t.lon, 7));
+				txt("alt", num(t.alt_m, 2));
+				updateSession(data.activeSession);
+			} catch {
+				updateOnlineState(null);
+			}
+		}
+		setInterval(refresh, 2000);
+
+		const controls = document.getElementById("controls");
+		const controlsSummary = controls?.querySelector("summary");
+		const desktop = window.matchMedia("(min-width: 721px)");
+		const updateControls = () => {
+			if (!controls) return;
+			controls.open = desktop.matches;
+			if (controlsSummary) controlsSummary.tabIndex = desktop.matches ? -1 : 0;
+		};
+		updateControls();
+		desktop.addEventListener("change", updateControls);
+		controlsSummary?.addEventListener("click", (event) => {
+			if (desktop.matches) event.preventDefault();
+		});
+
+		if (authenticated) {
+			document
+				.getElementById("arm-form")
+				?.addEventListener("submit", async (e) => {
+					e.preventDefault();
+					const input = document.getElementById("measurement-name");
+					const name = input?.value.trim();
+					if (!name) return;
+					const r = await fetch("/api/measurement/arm", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ name }),
+					});
+					if (r.ok) {
+						txt("arm-state", `Armed: ${name}`);
+						input.value = "";
+					}
+				});
+			document
+				.getElementById("start-session")
+				?.addEventListener("click", async () => {
+					const button = document.getElementById("start-session");
+					if (button?.disabled) return;
+					const name = document
+						.getElementById("session-name-input")
+						?.value.trim();
+					button.disabled = true;
+					txt("start-session-label", "Starting…");
+					txt("session-state", "Starting session…");
+					const r = await fetch("/api/session", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ action: "start", name }),
+					});
+					if (!r.ok) {
+						button.disabled = false;
+						txt("start-session-label", "Start");
+						txt("session-state", "Could not start session");
+						return;
+					}
+					const session = await r.json();
+					updateSession(session);
+					document.getElementById("session-name-input").value = "";
+				});
+			document
+				.getElementById("stop-session")
+				?.addEventListener("click", async () => {
+					const button = document.getElementById("stop-session");
+					if (button?.disabled) return;
+					button.disabled = true;
+					txt("stop-session-label", "Stopping…");
+					txt("session-state", "Stopping session…");
+					const r = await fetch("/api/session", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ action: "stop" }),
+					});
+					if (!r.ok) {
+						button.disabled = false;
+						txt("stop-session-label", "Stop");
+						txt("session-state", "Could not stop session");
+						return;
+					}
+					updateSession(null);
+				});
+		}
+	</script>
 </BaseLayout>

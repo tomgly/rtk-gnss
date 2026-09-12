@@ -1,25 +1,78 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { isAuthenticated } from "../lib/auth";
+
+if (await isAuthenticated(Astro)) return Astro.redirect("/");
 ---
-<BaseLayout title="Admin Login · RTK-GNSS">
-  <div class="mx-auto mt-16 max-w-sm panel p-5">
-    <div class="section-title mb-2">Administration</div>
-    <h1 class="mb-5 text-xl font-semibold">Field controls</h1>
-    <form id="login-form" class="space-y-3">
-      <input class="w-full" type="password" name="password" autocomplete="current-password" placeholder="Admin password" required />
-      <button class="btn w-full" type="submit">Sign in</button>
-      <p id="error" class="hidden text-sm text-red-700">Invalid password.</p>
-    </form>
-  </div>
-  <script>
-    const form = document.querySelector<HTMLFormElement>("#login-form");
-    const error = document.querySelector("#error");
-    form?.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const data = new FormData(form);
-      const response = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: data.get("password") }) });
-      if (response.ok) location.href = "/";
-      else error?.classList.remove("hidden");
-    });
-  </script>
+
+<BaseLayout title="Login · RTK-GNSS" fullHeight>
+	<div class="w-full max-w-sm panel p-5">
+		<h1 class="mb-5 text-xl font-semibold">Log in</h1>
+		<form id="login-form" class="space-y-3">
+			<input
+				class="w-full"
+				type="password"
+				name="password"
+				autocomplete="current-password"
+				placeholder="Password"
+				required
+			/>
+			<button
+				id="login-button"
+				class="btn inline-flex w-full items-center justify-center"
+				type="submit"
+			>
+				<span id="login-label">Log in</span>
+				<span id="login-spinner" class="login-spinner hidden" aria-hidden="true"
+				></span>
+			</button>
+			<p id="error" class="hidden text-sm text-red-700" role="alert">
+				Invalid password.
+			</p>
+		</form>
+	</div>
+	<script>
+		const form = document.querySelector<HTMLFormElement>("#login-form");
+		const error = document.querySelector("#error");
+		const button = document.querySelector<HTMLButtonElement>("#login-button");
+		const label = document.querySelector("#login-label");
+		const spinner = document.querySelector("#login-spinner");
+		let submitting = false;
+		form?.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			if (submitting) return;
+			submitting = true;
+			button?.setAttribute("aria-busy", "true");
+			if (button) button.disabled = true;
+			if (label) label.textContent = "Logging in…";
+			spinner?.classList.remove("hidden");
+			if (error) error.textContent = "Invalid password.";
+			error?.classList.add("hidden");
+			const data = new FormData(form);
+			let redirecting = false;
+			try {
+				const response = await fetch("/api/auth/login", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ password: data.get("password") }),
+				});
+				if (response.ok) {
+					redirecting = true;
+					location.href = "/";
+					return;
+				}
+				error?.classList.remove("hidden");
+			} catch {
+				if (error) error.textContent = "Unable to log in. Try again.";
+				error?.classList.remove("hidden");
+			} finally {
+				if (redirecting) return;
+				submitting = false;
+				button?.removeAttribute("aria-busy");
+				if (button) button.disabled = false;
+				if (label) label.textContent = "Log in";
+				spinner?.classList.add("hidden");
+			}
+		});
+	</script>
 </BaseLayout>
