@@ -85,13 +85,11 @@ hardware/
 
 A named measurement can be armed from the Web UI. The Rover LED turns blue until the physical button saves that point.
 
-## Telemetry Timing
+## Live Status Timing
 
-Telemetry is recorded on absolute UTC 10-second boundaries rather than 10 seconds after boot:
+The Gateway sends one current live-status update at each UTC one-minute boundary. It sends nothing unless Wi-Fi is connected, the Rover link is fresh, and the Rover has a valid GNSS fix. The server replaces the prior live-status record for that Gateway rather than retaining a telemetry history.
 
-`...:00`, `...:10`, `...:20`, `...:30`, `...:40`, `...:50`
-
-The Gateway and server use NTP-derived UTC. The Rover also preserves GNSS time so standalone Rover logs remain useful without Internet access.
+The Gateway uses NTP-derived UTC. The Rover also preserves GNSS time so standalone Rover logs remain useful without Internet access.
 
 ## Web Stack
 

@@ -37,7 +37,7 @@ Responsibilities:
 - Keep an append-only JSONL backup/queue in LittleFS.
 - Connect to up to three configured Wi-Fi networks.
 - Synchronize UTC with NTP.
-- Generate telemetry uploads at UTC 10-second boundaries.
+- Send one current live-status update at UTC one-minute boundaries only while Wi-Fi is connected and fresh Rover telemetry contains a valid GNSS fix.
 - Synchronize records to the Cloudflare API and retry failures.
 - Poll server commands and forward them to the Rover.
 - Optionally connect to NTRIP, send Rover GGA, and forward RTCM to Rover.
@@ -52,16 +52,15 @@ D1 stores:
 
 - devices
 - sessions
-- telemetry
+- current live status
 - measurements
 - events
 - commands
-- admin sessions
 
-Public routes are read-only. Control operations require an authenticated browser session. Gateway ingestion and command polling use a device API token.
+All browser pages and browser data APIs require a signed login cookie. Gateway ingestion and command polling use a device API token.
 
 ## Storage Strategy
 
-Rover and Gateway use JSONL as short-term backup and diagnostics. D1 is the long-term source of truth.
+Rover and Gateway use JSONL as short-term backup and diagnostics. D1 is the long-term source of truth for measurements, sessions, and events. A live-status update is not queued or retained locally; it is sent only when the Gateway is online, the Rover link is fresh, and GNSS has a valid fix.
 
 Each originating record receives a unique ID at creation. That ID is preserved unchanged through Rover, Gateway, and server storage. Repeated uploads are safe because server IDs are unique and ingestion is idempotent.

@@ -15,25 +15,25 @@ Every binary message starts with a common header:
 
 ## Rover to Gateway
 
-| Type | Purpose |
-| --- | --- |
-| `TELEMETRY` | Latest GNSS and Rover state |
-| `MEASUREMENT` | Physical or named point capture |
-| `EVENT` | Button, GNSS, link, error, and debug events |
-| `SESSION` | Session start/stop state |
-| `HEARTBEAT` | Link health |
-| `ACK` | Acknowledge Gateway commands |
+| Type          | Purpose                                     |
+| ------------- | ------------------------------------------- |
+| `TELEMETRY`   | Latest GNSS and Rover state                 |
+| `MEASUREMENT` | Physical or named point capture             |
+| `EVENT`       | Button, GNSS, link, error, and debug events |
+| `SESSION`     | Session start/stop state                    |
+| `HEARTBEAT`   | Link health                                 |
+| `ACK`         | Acknowledge Gateway commands                |
 
 ## Gateway to Rover
 
-| Type | Purpose |
-| --- | --- |
-| `ACK` | Confirm record persistence/receipt |
-| `RTCM_FRAGMENT` | Binary RTCM fragment |
-| `ARM_MEASUREMENT` | Set the next named point |
-| `SESSION_CONTROL` | Start/stop the active session |
-| `CONFIG` | Runtime-safe configuration |
-| `TIME_SYNC` | Optional Gateway UTC reference |
+| Type              | Purpose                            |
+| ----------------- | ---------------------------------- |
+| `ACK`             | Confirm record persistence/receipt |
+| `RTCM_FRAGMENT`   | Binary RTCM fragment               |
+| `ARM_MEASUREMENT` | Set the next named point           |
+| `SESSION_CONTROL` | Start/stop the active session      |
+| `CONFIG`          | Runtime-safe configuration         |
+| `TIME_SYNC`       | Optional Gateway UTC reference     |
 
 RTCM remains binary and is never converted to JSON during ESP-NOW transport.
 
@@ -54,7 +54,7 @@ The firmware implementation uses compact UUID-like hexadecimal IDs to keep ESP-N
 
 ## Telemetry
 
-Gateway uploads telemetry on UTC boundaries ending in `00`, `10`, `20`, `30`, `40`, and `50` seconds.
+Gateway sends the current telemetry state at UTC one-minute boundaries only when Wi-Fi is connected, fresh Rover telemetry is present, and GNSS has a valid fix. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
 
 Telemetry includes enough state to debug later:
 
@@ -76,7 +76,7 @@ Telemetry includes enough state to debug later:
 
 ## Measurements
 
-A measurement captures a snapshot immediately rather than waiting for the next telemetry boundary.
+A measurement captures a snapshot immediately rather than waiting for the next live-status update.
 
 Measurements may be:
 

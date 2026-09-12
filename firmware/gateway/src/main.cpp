@@ -263,11 +263,13 @@ static void syncQueue() {
   }
   xSemaphoreGive(fileMutex);
 }
-static void queueBoundaryTelemetry() {
+static void queueLiveStatus() {
   time_t now = time(nullptr);
   if (now < 1700000000) return;  // NTP not valid yet.
-  if ((now % TELEMETRY_BOUNDARY_SECONDS) != 0 || (uint32_t)now == lastBoundaryEpoch) return;
+  if ((now % LIVE_STATUS_INTERVAL_SECONDS) != 0 || (uint32_t)now == lastBoundaryEpoch) return;
   lastBoundaryEpoch = (uint32_t)now;
+
+  if (WiFi.status() != WL_CONNECTED) return;
 
   TelemetryPayload p{};
   bool has;
@@ -276,6 +278,8 @@ static void queueBoundaryTelemetry() {
   if (has) memcpy(&p, &latestRover, sizeof(p));
   portEXIT_CRITICAL(&stateMux);
   if (!has) return;
+  if (millis() - lastRoverMs > ROVER_TIMEOUT_MS) return;
+  if (p.gnss.fix_quality == 0 || p.gnss.gnss_age_ms > LIVE_STATUS_MAX_GNSS_AGE_MS) return;
 
   char rid[ID_LEN]; makeId(rid);
   String j = baseEnvelope("telemetry", rid, p.header.source_device_id);
@@ -291,7 +295,7 @@ static void queueBoundaryTelemetry() {
        ",\"ntrip_connected\":" + String(ntripConnected ? "true" : "false") +
        ",\"rtcm_age_ms\":" + String(lastRtcmMs ? millis() - lastRtcmMs : 0) +
        ",\"rtcm_bytes\":" + String(rtcmBytes) + ",\"protocol_version\":" + String(PROTOCOL_VERSION) + "}";
-  queueRecord(j);
+  postJson(j);
 }
 
 static String basicAuth() {
@@ -405,7 +409,7 @@ static void networkTask(void *) {
       lastWifiAttemptMs = millis();
       connectBestWifi();
     }
-    queueBoundaryTelemetry();
+    queueLiveStatus();
     if (millis() - lastSync > UPLOAD_RETRY_INTERVAL_MS) { lastSync = millis(); syncQueue(); }
     if (millis() - lastPoll > COMMAND_POLL_INTERVAL_MS) { lastPoll = millis(); pollCommands(); }
     vTaskDelay(pdMS_TO_TICKS(100));
