@@ -1,8 +1,9 @@
 ---
+import { env } from "cloudflare:workers";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { isAdmin } from "../../lib/auth";
 const admin = await isAdmin(Astro);
-const db = Astro.locals.runtime.env.DB;
+const db = env.DB;
 const sessions = await db.prepare("SELECT * FROM sessions ORDER BY created_at DESC LIMIT 50").all<any>();
 const measurements = await db.prepare("SELECT * FROM measurements ORDER BY gateway_time DESC LIMIT 200").all<any>();
 const fixLabel = (fix?: number) => fix === 4 ? "RTK FIXED" : fix === 5 ? "RTK FLOAT" : fix === 2 ? "DIFF" : fix === 1 ? "SINGLE" : "NO FIX";

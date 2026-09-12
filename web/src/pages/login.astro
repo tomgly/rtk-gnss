@@ -12,7 +12,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     </form>
   </div>
   <script>
-    const form = document.querySelector("#login-form");
+    const form = document.querySelector<HTMLFormElement>("#login-form");
     const error = document.querySelector("#error");
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();

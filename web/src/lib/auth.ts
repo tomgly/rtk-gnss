@@ -1,4 +1,5 @@
 import type { APIContext } from "astro";
+import { env } from "cloudflare:workers";
 
 const COOKIE_NAME = "rtk_admin";
 const SESSION_HOURS = 12;
@@ -6,7 +7,7 @@ const SESSION_HOURS = 12;
 export async function createAdminSession(context: APIContext) {
   const token = crypto.randomUUID().replaceAll("-", "");
   const expires = new Date(Date.now() + SESSION_HOURS * 3600_000).toISOString();
-  await context.locals.runtime.env.DB.prepare(
+  await env.DB.prepare(
     "INSERT INTO admin_sessions (token, expires_at) VALUES (?, ?)",
   )
     .bind(token, expires)
@@ -23,7 +24,7 @@ export async function createAdminSession(context: APIContext) {
 export async function isAdmin(context: APIContext) {
   const token = context.cookies.get(COOKIE_NAME)?.value;
   if (!token) return false;
-  const row = await context.locals.runtime.env.DB.prepare(
+  const row = await env.DB.prepare(
     "SELECT token FROM admin_sessions WHERE token = ? AND expires_at > strftime('%Y-%m-%dT%H:%M:%SZ','now')",
   )
     .bind(token)
@@ -42,7 +43,7 @@ export async function requireAdmin(context: APIContext) {
 export async function destroyAdminSession(context: APIContext) {
   const token = context.cookies.get(COOKIE_NAME)?.value;
   if (token) {
-    await context.locals.runtime.env.DB.prepare("DELETE FROM admin_sessions WHERE token = ?")
+    await env.DB.prepare("DELETE FROM admin_sessions WHERE token = ?")
       .bind(token)
       .run();
   }

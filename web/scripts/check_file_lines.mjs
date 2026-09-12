@@ -8,7 +8,7 @@ async function walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) await walk(path);
-    else if (allowed.has(extname(path))) {
+    else if (entry.name !== "worker-configuration.d.ts" && allowed.has(extname(path))) {
       const lines = (await readFile(path, "utf8")).split("\n").length;
       if (lines > 500) violations.push(`${path}: ${lines} lines`);
     }

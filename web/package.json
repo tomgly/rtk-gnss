@@ -19,7 +19,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^12.6.10",
+    "@astrojs/cloudflare": "^14.3.1",
     "@tailwindcss/vite": "^4.3.1",
     "astro": "^7.3.1",
     "tailwindcss": "^4.3.1",

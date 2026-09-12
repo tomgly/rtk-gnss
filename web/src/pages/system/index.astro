@@ -1,9 +1,10 @@
 ---
+import { env } from "cloudflare:workers";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import LedReference from "../../components/LedReference.astro";
 import { isAdmin } from "../../lib/auth";
 const admin = await isAdmin(Astro);
-const devices = await Astro.locals.runtime.env.DB.prepare("SELECT * FROM devices ORDER BY last_seen DESC").all<any>();
+const devices = await env.DB.prepare("SELECT * FROM devices ORDER BY last_seen DESC").all<any>();
 ---
 <BaseLayout title="System · RTK-GNSS" admin={admin}>
   <div class="mb-4"><div class="section-title">Diagnostics</div><h1 class="mt-1 text-2xl font-semibold">System</h1></div>
