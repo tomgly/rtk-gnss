@@ -1,0 +1,21 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import LedReference from "../../components/LedReference.astro";
+import { isAdmin } from "../../lib/auth";
+const admin = await isAdmin(Astro);
+const devices = await Astro.locals.runtime.env.DB.prepare("SELECT * FROM devices ORDER BY last_seen DESC").all<any>();
+---
+<BaseLayout title="System · RTK-GNSS" admin={admin}>
+  <div class="mb-4"><div class="section-title">Diagnostics</div><h1 class="mt-1 text-2xl font-semibold">System</h1></div>
+  <section class="panel mb-4">
+    <div class="px-4 py-3 section-title">Devices</div>
+    <div class="table-wrap"><table><thead><tr><th>Device</th><th>Gateway</th><th>Last seen</th><th>ESP-NOW RSSI</th><th>Wi-Fi RSSI</th><th>Protocol</th></tr></thead><tbody>
+      {(devices.results ?? []).map((d:any) => <tr><td class="font-medium">{d.device_id}</td><td>{d.gateway_id ?? "—"}</td><td class="mono">{d.last_seen}</td><td class="mono">{d.last_espnow_rssi ?? "—"}</td><td class="mono">{d.last_wifi_rssi ?? "—"}</td><td>{d.protocol_version ?? "—"}</td></tr>)}
+    </tbody></table></div>
+  </section>
+  <section class="panel p-4"><div class="section-title mb-4">LED reference</div><LedReference /></section>
+  <section class="panel mt-4 p-4 text-sm">
+    <div class="section-title mb-3">Network behavior</div>
+    <p class="text-gray-700">Gateway stores three Wi-Fi credentials locally, roams between available configured networks, and keeps ESP-NOW / local logging active while Internet service is unavailable. NTRIP is optional and does not gate normal GNSS logging.</p>
+  </section>
+</BaseLayout>

@@ -1,0 +1,40 @@
+---
+import "../styles/global.css";
+
+interface Props { title?: string; admin?: boolean }
+const { title = "RTK-GNSS", admin = false } = Astro.props;
+const path = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="theme-color" content="#111827" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="border-b border-gray-300 bg-white">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-3 sm:px-6">
+        <a href="/" class="flex items-baseline gap-3">
+          <strong class="text-sm tracking-[.08em]">RTK-GNSS</strong>
+          <span class="hidden text-xs text-gray-500 sm:inline">FIELD CONSOLE</span>
+        </a>
+        <nav class="flex items-center gap-1 text-sm">
+          <a class:list={["px-3 py-2", path === "/" && "bg-gray-100 font-semibold"]} href="/">Live</a>
+          <a class:list={["px-3 py-2", path.startsWith("/history") && "bg-gray-100 font-semibold"]} href="/history">History</a>
+          <a class:list={["px-3 py-2", path.startsWith("/system") && "bg-gray-100 font-semibold"]} href="/system">System</a>
+          {admin ? <button id="logout" class="ml-1 px-3 py-2 text-gray-500">Log out</button> : <a href="/login" class="ml-1 px-3 py-2 text-gray-500">Admin</a>}
+        </nav>
+      </div>
+    </header>
+    <main class="mx-auto max-w-7xl px-4 py-5 sm:px-6"><slot /></main>
+    <script>
+      const logout = document.querySelector("#logout");
+      logout?.addEventListener("click", async () => {
+        await fetch("/api/auth/logout", { method: "POST" });
+        location.href = "/";
+      });
+    </script>
+  </body>
+</html>

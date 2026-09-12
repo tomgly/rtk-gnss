@@ -1,0 +1,24 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { isAdmin } from "../../lib/auth";
+const admin = await isAdmin(Astro);
+const db = Astro.locals.runtime.env.DB;
+const sessions = await db.prepare("SELECT * FROM sessions ORDER BY created_at DESC LIMIT 50").all<any>();
+const measurements = await db.prepare("SELECT * FROM measurements ORDER BY gateway_time DESC LIMIT 200").all<any>();
+const fixLabel = (fix?: number) => fix === 4 ? "RTK FIXED" : fix === 5 ? "RTK FLOAT" : fix === 2 ? "DIFF" : fix === 1 ? "SINGLE" : "NO FIX";
+---
+<BaseLayout title="History · RTK-GNSS" admin={admin}>
+  <div class="mb-4"><div class="section-title">Recorded data</div><h1 class="mt-1 text-2xl font-semibold">History</h1></div>
+  <section class="panel mb-4">
+    <div class="px-4 py-3 section-title">Sessions</div>
+    <div class="table-wrap"><table><thead><tr><th>Name</th><th>Started</th><th>Ended</th><th>Status</th><th>ID</th></tr></thead><tbody>
+      {(sessions.results ?? []).map((s:any) => <tr><td>{s.name}</td><td class="mono">{s.started_at ?? "—"}</td><td class="mono">{s.ended_at ?? "—"}</td><td>{s.active ? "Active" : "Closed"}</td><td class="mono text-xs">{s.session_id}</td></tr>)}
+    </tbody></table></div>
+  </section>
+  <section class="panel">
+    <div class="px-4 py-3 section-title">Measurements</div>
+    <div class="table-wrap"><table><thead><tr><th>UTC</th><th>Name</th><th>Fix</th><th>Latitude</th><th>Longitude</th><th>HDOP</th><th>RSSI</th><th>ID</th></tr></thead><tbody>
+      {(measurements.results ?? []).map((m:any) => <tr class:list={[m.cancelled && "opacity-45 line-through"]}><td class="mono">{m.gateway_time}</td><td>{m.name}</td><td>{fixLabel(m.fix)}</td><td class="mono">{m.lat?.toFixed?.(9)}</td><td class="mono">{m.lon?.toFixed?.(9)}</td><td class="mono">{m.hdop ?? "—"}</td><td class="mono">{m.espnow_rssi ?? "—"}</td><td class="mono text-xs">{m.measurement_id}</td></tr>)}
+    </tbody></table></div>
+  </section>
+</BaseLayout>

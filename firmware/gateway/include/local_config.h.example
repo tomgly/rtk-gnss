@@ -1,0 +1,11 @@
+#pragma once
+#include "config.example.h"
+
+#undef GATEWAY_DEVICE_ID
+#define GATEWAY_DEVICE_ID "gateway-a"
+
+#undef API_BASE_URL
+#define API_BASE_URL "https://rtk-gnss.example.workers.dev"
+
+#undef ROVER_MAC
+#define ROVER_MAC {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}

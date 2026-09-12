@@ -1,0 +1,23 @@
+# Web
+web/node_modules/
+web/.astro/
+web/dist/
+web/.wrangler/
+
+# Firmware build output
+firmware/**/.pio/
+
+# Local firmware secrets
+firmware/**/include/secrets.h
+firmware/**/include/local_config.h
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
