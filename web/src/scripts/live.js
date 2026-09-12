@@ -23,6 +23,10 @@ const txt = (id, value) => {
 	if (el) el.textContent = value ?? "—";
 };
 const num = (v, digits) => (typeof v === "number" ? v.toFixed(digits) : "—");
+const packetLossPercent = (received, lost) => {
+	const total = Number(received) + Number(lost);
+	return total > 0 ? `${((Number(lost) / total) * 100).toFixed(1)}%` : "—";
+};
 const setState = (id, state) =>
 	document.getElementById(id)?.setAttribute("data-state", state);
 const updateSession = (session) => {
@@ -109,9 +113,19 @@ async function refresh() {
 		setState("gnss-status", noData ? "no-data" : fixState(t.fix));
 		txt("sats", t.satellites);
 		txt("hdop", t.hdop);
-		txt("esp-rssi", t.espnow_rssi ?? state.rover?.last_espnow_rssi);
-		txt("lost", t.packets_lost);
-		txt("wifi-rssi", state.gatewayOnline ? data.gateway?.last_wifi_rssi : "—");
+		txt(
+			"esp-rssi",
+			t.espnow_rssi ??
+				state.rover?.espnow_rssi ??
+				state.rover?.last_espnow_rssi,
+		);
+		txt("lost", packetLossPercent(t.packets_received, t.packets_lost));
+		txt(
+			"wifi-rssi",
+			state.gatewayOnline
+				? (data.gateway?.wifi_rssi ?? data.gateway?.last_wifi_rssi)
+				: "—",
+		);
 		txt("wifi-ssid", state.gatewayOnline ? "Online" : "Offline");
 		txt("lat", hasPosition ? num(t.lat, 7) : "—");
 		txt("lon", hasPosition ? num(t.lon, 7) : "—");
