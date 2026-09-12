@@ -177,7 +177,8 @@ const fixState = (fix?: number) =>
 						currentTelemetry
 							? `${(
 									(currentTelemetry.packets_lost /
-										(currentTelemetry.packets_received + currentTelemetry.packets_lost)) *
+										(currentTelemetry.packets_received +
+											currentTelemetry.packets_lost)) *
 									100
 								).toFixed(1)}%`
 							: "—"
