@@ -19,5 +19,6 @@
 #define DOUBLE_CLICK_MS 350
 #define LONG_PRESS_MS 1800
 
-// Replace with the real Gateway ESP32 Wi-Fi MAC address in local_config.h.
-#define GATEWAY_MAC {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+// Locally administered Wi-Fi MAC addresses for the prototype pair.
+#define DEVICE_MAC {0x02, 0x00, 0x00, 0x00, 0x00, 0x02}
+#define GATEWAY_MAC {0x02, 0x00, 0x00, 0x00, 0x00, 0x01}

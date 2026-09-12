@@ -3,7 +3,4 @@
 
 // Example local override. This file is safe to copy as local_config.h.
 #undef ROVER_DEVICE_ID
-#define ROVER_DEVICE_ID "rover-a"
-
-#undef GATEWAY_MAC
-#define GATEWAY_MAC {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}
+#define ROVER_DEVICE_ID "prototype-rover"

@@ -14,6 +14,7 @@
 
 using namespace rtk;
 
+static uint8_t deviceMac[] = DEVICE_MAC;
 static uint8_t gatewayMac[] = GATEWAY_MAC;
 static Adafruit_NeoPixel led(1, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
 static HardwareSerial gnssSerial(1);
@@ -256,7 +257,7 @@ static void cancelLastMeasurement() {
   setOverlay(rgb(120, 45, 0), 2, 110, 90);
 }
 
-static void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+static void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   if (len < (int)sizeof(Header)) return;
   auto *h = reinterpret_cast<const Header *>(data);
   if (h->version != PROTOCOL_VERSION) return;
@@ -294,6 +295,7 @@ static void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int 
 
 static void setupEspNow() {
   WiFi.mode(WIFI_STA);
+  if (esp_wifi_set_mac(WIFI_IF_STA, deviceMac) != ESP_OK) Serial.println("Failed to set Wi-Fi MAC");
   if (esp_now_init() != ESP_OK) return;
   esp_now_register_recv_cb(onReceive);
   esp_now_peer_info_t peer{};

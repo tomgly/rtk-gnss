@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include <mbedtls/base64.h>
 #include <time.h>
 #include <vector>
@@ -25,6 +26,7 @@
 
 using namespace rtk;
 
+static uint8_t deviceMac[] = DEVICE_MAC;
 static uint8_t roverMac[] = ROVER_MAC;
 static Adafruit_NeoPixel led(1, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
 static portMUX_TYPE stateMux = portMUX_INITIALIZER_UNLOCKED;
@@ -155,12 +157,12 @@ static void storeSession(const SessionPayload &p) {
   sendAck(p.header.message_id);
 }
 
-static void onReceive(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+static void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   if (len < (int)sizeof(Header)) return;
   const Header *h = reinterpret_cast<const Header *>(data);
   if (h->version != PROTOCOL_VERSION) return;
   lastRoverMs = millis();
-  latestEspNowRssi = info && info->rx_ctrl ? info->rx_ctrl->rssi : -127;
+  latestEspNowRssi = -127;
   roverPackets++;
   if (roverLastSeq && h->seq > roverLastSeq + 1) roverLostPackets += h->seq - roverLastSeq - 1;
   if (h->seq > roverLastSeq) roverLastSeq = h->seq;
@@ -270,6 +272,12 @@ static void queueLiveStatus() {
   lastBoundaryEpoch = (uint32_t)now;
 
   if (WiFi.status() != WL_CONNECTED) return;
+
+  char gatewayRecordId[ID_LEN]; makeId(gatewayRecordId);
+  String gatewayStatus = baseEnvelope("gateway_status", gatewayRecordId, GATEWAY_DEVICE_ID);
+  gatewayStatus += ",\"wifi_ssid\":\"" + jsonEscape(WiFi.SSID()) + "\",\"wifi_rssi\":" +
+                   String(WiFi.RSSI()) + ",\"protocol_version\":" + String(PROTOCOL_VERSION) + "}";
+  postJson(gatewayStatus);
 
   TelemetryPayload p{};
   bool has;
@@ -424,6 +432,7 @@ void setup() {
   prefs.begin("rtk", false);
   lastCommandId = prefs.getUInt("last_cmd", 0);
   WiFi.mode(WIFI_STA);
+  if (esp_wifi_set_mac(WIFI_IF_STA, deviceMac) != ESP_OK) Serial.println("Failed to set Wi-Fi MAC");
   connectBestWifi();
   setupEspNow();
   xTaskCreatePinnedToCore(networkTask, "network", 12288, nullptr, 1, nullptr, 0);

@@ -14,5 +14,6 @@
 #define LIVE_STATUS_MAX_GNSS_AGE_MS 5000
 #define ROVER_TIMEOUT_MS 3000
 
-// Replace with the real Rover ESP32 Wi-Fi MAC in local_config.h.
-#define ROVER_MAC {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+// Locally administered Wi-Fi MAC addresses for the prototype pair.
+#define DEVICE_MAC {0x02, 0x00, 0x00, 0x00, 0x00, 0x01}
+#define ROVER_MAC {0x02, 0x00, 0x00, 0x00, 0x00, 0x02}

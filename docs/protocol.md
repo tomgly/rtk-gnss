@@ -54,7 +54,7 @@ The firmware implementation uses compact UUID-like hexadecimal IDs to keep ESP-N
 
 ## Telemetry
 
-Gateway sends the current telemetry state at UTC one-minute boundaries only when Wi-Fi is connected, fresh Rover telemetry is present, and GNSS has a valid fix. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
+Gateway sends a `gateway_status` at UTC one-minute boundaries while Wi-Fi is connected. It sends current telemetry only when fresh Rover telemetry is present and GNSS has a valid fix. The server replaces the previous live-status record for that Gateway; it does not retain a telemetry history or queue live status for later upload.
 
 Telemetry includes enough state to debug later:
 
