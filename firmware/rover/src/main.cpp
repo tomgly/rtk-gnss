@@ -33,6 +33,7 @@ static char armedName[NAME_LEN] = "";
 static char lastMeasurementId[ID_LEN] = "";
 static char lastDate[7] = "";
 static int lastLoggedGnssSecond = -1;
+static uint32_t lastGnssDebugMs = 0;
 
 struct LedOverlay {
   uint32_t color = 0;
@@ -155,6 +156,12 @@ static void parseNmea(const String &sentence) {
     strlcpy(gnss.gga, original, sizeof(gnss.gga));
     buildGnssUtc(fields[1]);
 
+    if (millis() - lastGnssDebugMs >= 5000) {
+      lastGnssDebugMs = millis();
+      Serial.printf("[GNSS] fix=%u sats=%u lat=%.9f lon=%.9f hdop=%.2f\n",
+                    gnss.fix_quality, gnss.satellites, gnss.lat, gnss.lon, gnss.hdop);
+    }
+
     if (strlen(fields[1]) >= 6) {
       int sec = (fields[1][4] - '0') * 10 + (fields[1][5] - '0');
       if (sec % 10 == 0 && sec != lastLoggedGnssSecond) {
@@ -183,6 +190,7 @@ static void parseNmea(const String &sentence) {
 static bool sendRaw(const void *data, size_t len) {
   esp_err_t result = esp_now_send(gatewayMac, reinterpret_cast<const uint8_t *>(data), len);
   if (result == ESP_OK) setOverlay(rgb(90, 90, 90), 1, 30, 30);  // white radio flash
+  else Serial.printf("[ESP-NOW] queue failed len=%u error=%d\n", (unsigned)len, (int)result);
   return result == ESP_OK;
 }
 
@@ -378,6 +386,8 @@ static void handleButton() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.printf("[BOOT] protocol=%u telemetry_size=%u\n", PROTOCOL_VERSION,
+                (unsigned)sizeof(TelemetryPayload));
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(PPS_PIN, INPUT);
   led.begin();

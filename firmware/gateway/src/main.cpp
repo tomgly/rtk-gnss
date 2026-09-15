@@ -50,6 +50,8 @@ static bool ntripConnected = false;
 static WiFiClient ntripClient;
 static SemaphoreHandle_t fileMutex;
 static Preferences prefs;
+static volatile int lastTelemetryPacketLen = 0;
+static volatile uint32_t telemetryPackets = 0;
 
 static uint32_t rgb(uint8_t r, uint8_t g, uint8_t b) { return led.Color(r, g, b); }
 static uint32_t overlayColor = 0;
@@ -179,12 +181,16 @@ static void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   if (h->seq > roverLastSeq) roverLastSeq = h->seq;
   flashWhite();
 
-  if (h->type == MsgType::TELEMETRY && len >= (int)sizeof(TelemetryPayload)) {
-    portENTER_CRITICAL(&stateMux);
-    memcpy(&latestRover, data, sizeof(TelemetryPayload));
-    haveRoverTelemetry = true;
-    portEXIT_CRITICAL(&stateMux);
-    sendAck(h->message_id);
+  if (h->type == MsgType::TELEMETRY) {
+    lastTelemetryPacketLen = len;
+    if (len >= (int)sizeof(TelemetryPayload)) {
+      portENTER_CRITICAL(&stateMux);
+      memcpy(&latestRover, data, sizeof(TelemetryPayload));
+      haveRoverTelemetry = true;
+      telemetryPackets++;
+      portEXIT_CRITICAL(&stateMux);
+      sendAck(h->message_id);
+    }
   } else if (h->type == MsgType::MEASUREMENT && len >= (int)sizeof(MeasurementPayload)) {
     storeMeasurement(*reinterpret_cast<const MeasurementPayload *>(data));
   } else if (h->type == MsgType::EVENT && len >= (int)sizeof(EventPayload)) {
@@ -247,6 +253,7 @@ static bool postJson(const String &json) {
     flashWhite();
     return true;
   }
+  Serial.printf("[CLOUD] POST failed http=%d bytes=%u\n", code, (unsigned)json.length());
   return false;
 }
 
@@ -301,6 +308,12 @@ static void queueLiveStatus() {
   has = haveRoverTelemetry;
   if (has) memcpy(&p, &latestRover, sizeof(p));
   portEXIT_CRITICAL(&stateMux);
+  Serial.printf("[ESP-NOW] telemetry_count=%lu len=%d expected=%u rover_age_ms=%lu",
+                (unsigned long)telemetryPackets, lastTelemetryPacketLen,
+                (unsigned)sizeof(TelemetryPayload), (unsigned long)(millis() - lastRoverMs));
+  if (has) Serial.printf(" fix=%u gnss_age_ms=%lu lat=%.9f lon=%.9f", p.gnss.fix_quality,
+                         (unsigned long)p.gnss.gnss_age_ms, p.gnss.lat, p.gnss.lon);
+  Serial.println();
   if (!has) return;
   if (millis() - lastRoverMs > ROVER_TIMEOUT_MS) return;
 
@@ -327,7 +340,10 @@ static void queueLiveStatus() {
        ",\"ntrip_connected\":" + String(ntripConnected ? "true" : "false") +
        ",\"rtcm_age_ms\":" + String(lastRtcmMs ? millis() - lastRtcmMs : 0) +
        ",\"rtcm_bytes\":" + String(rtcmBytes) + ",\"protocol_version\":" + String(PROTOCOL_VERSION) + "}";
-  postJson(j);
+  bool telemetryPosted = postJson(j);
+  Serial.printf("[CLOUD] telemetry POST %s fix=%u age_ms=%lu\n",
+                telemetryPosted ? "ok" : "failed", p.gnss.fix_quality,
+                (unsigned long)p.gnss.gnss_age_ms);
 }
 
 static String basicAuth() {
@@ -451,6 +467,8 @@ static void networkTask(void *) {
 
 void setup() {
   Serial.begin(115200);
+  Serial.printf("[BOOT] protocol=%u telemetry_size=%u\n", PROTOCOL_VERSION,
+                (unsigned)sizeof(TelemetryPayload));
   led.begin(); led.setBrightness(32);
   LittleFS.begin(true);
   fileMutex = xSemaphoreCreateMutex();
